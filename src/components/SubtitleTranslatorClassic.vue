@@ -3,24 +3,16 @@
     <!-- Header Section -->
     <div class="header-section">
       <div class="header-content">
-        <div class="header-left">
-          <div class="app-icon">🌐</div>
-          <div class="app-info">
-            <h1 class="app-title">HUY Media Auto Sub Translator</h1>
-            <p class="app-subtitle">AI-powered subtitle translation with chunked processing</p>
-          </div>
-        </div>
-        <div class="header-right">
-          <div class="status-indicator" :class="{ active: apiKey }">
-            <div class="status-dot"></div>
-            <span class="status-text">{{ apiKey ? 'API Connected' : 'API Disconnected' }}</span>
-          </div>
+        <div class="header-icon">🌐</div>
+        <div class="header-text">
+          <h1 class="header-title">Subtitle Translator</h1>
+          <p class="header-subtitle">AI-powered subtitle translation with chunked processing</p>
         </div>
       </div>
     </div>
 
-    <!-- API Settings -->
-    <div class="card">
+    <!-- API Settings Card -->
+    <div class="card api-card">
       <div class="card-header primary">
         <div class="card-icon">🔑</div>
         <h3 class="card-title">API Settings</h3>
@@ -28,22 +20,24 @@
       <div class="card-content">
         <div class="form-group">
           <label class="form-label">API Key ChatGPT:</label>
-          <input
-            type="password"
-            v-model="apiKey"
-            placeholder="Nhập API key ChatGPT của bạn"
-            class="form-input"
-          />
-          <div v-if="apiKey" class="api-status">
-            <div class="status-dot active"></div>
-            <span class="status-message">API Key hợp lệ</span>
+          <div class="input-wrapper">
+            <input
+              type="password"
+              v-model="apiKey"
+              placeholder="Nhập API key ChatGPT của bạn"
+              class="form-input"
+            />
+            <div v-if="apiKey" class="api-status">
+              <div class="status-dot active"></div>
+              <span class="status-text">API Key hợp lệ</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Language Settings -->
-    <div class="card">
+    <!-- Language Settings Card -->
+    <div class="card language-card">
       <div class="card-header info">
         <div class="card-icon">🌐</div>
         <h3 class="card-title">Language Settings</h3>
@@ -86,15 +80,16 @@
       </div>
     </div>
 
-    <!-- File Management -->
-    <div class="card">
+    <!-- File Management Card -->
+    <div class="card file-card">
       <div class="card-header warning">
         <div class="card-icon">📁</div>
-        <h3 class="card-title">Import File (*.txt, *.srt):</h3>
+        <h3 class="card-title">File Management</h3>
       </div>
       <div class="card-content">
         <div class="file-grid">
-          <div class="form-group">
+          <div class="file-upload-section">
+            <label class="form-label">Import File (*.txt, *.srt):</label>
             <div class="file-input-wrapper">
               <input 
                 type="file" 
@@ -102,96 +97,142 @@
                 accept=".txt,.srt"
                 class="file-input"
                 id="file-upload"
+                ref="fileInput"
               />
               <label for="file-upload" class="file-input-label">
                 <span class="upload-icon">📄</span>
-                <span>Choose File</span>
+                <span class="upload-text">Choose File</span>
               </label>
-              <span v-if="selectedFileName" class="file-name">{{ selectedFileName }}</span>
+              <div v-if="selectedFileName" class="file-name">
+                <span class="file-icon">📄</span>
+                <span class="file-text">{{ selectedFileName }}</span>
+              </div>
             </div>
           </div>
           
-          <div class="form-group">
+          <div class="folder-section">
+            <label class="form-label">Output Folder:</label>
             <button 
               @click="chooseFolder" 
               :disabled="isRunning"
               class="btn btn-primary folder-btn"
             >
-              📂 Thư mục lưu
+              <span class="btn-icon">📂</span>
+              <span>{{ folderPath ? 'Folder Selected' : 'Choose Folder' }}</span>
             </button>
           </div>
         </div>
 
-        <div v-if="folderPath" class="folder-path">
-          <span class="folder-icon">📁</span>
-          <span class="folder-text">{{ folderPath }}</span>
+        <div v-if="folderPath" class="folder-display">
+          <div class="folder-info">
+            <span class="folder-icon">📁</span>
+            <span class="folder-path">{{ folderPath }}</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- File Info -->
-    <div v-if="subtitles && subtitles.length > 0" class="card">
+    <!-- File Info Card -->
+    <div v-if="subtitles && subtitles.length > 0" class="card info-card">
       <div class="card-header info">
-        <div class="card-icon">📄</div>
-        <h3 class="card-title">File được chia thành {{ chunks.length }} đoạn (mỗi đoạn < 3 phút)</h3>
+        <div class="card-icon">📊</div>
+        <h3 class="card-title">File Information</h3>
       </div>
       <div class="card-content">
-        <div class="file-info">
+        <div class="info-grid">
           <div class="info-item">
-            <span class="info-icon">⏱</span>
-            <span class="info-text">Tổng thời lượng: {{ totalDuration }}</span>
+            <div class="info-icon">🧩</div>
+            <div class="info-content">
+              <div class="info-number">{{ chunks.length }}</div>
+              <div class="info-label">Chunks</div>
+              <div class="info-desc">Each < 3 minutes</div>
+            </div>
           </div>
-          <div class="info-note">📝 Mỗi đoạn sẽ được lưu thành file riêng biệt</div>
+          <div class="info-item">
+            <div class="info-icon">⏱️</div>
+            <div class="info-content">
+              <div class="info-number">{{ totalDuration }}</div>
+              <div class="info-label">Total Duration</div>
+              <div class="info-desc">Full video length</div>
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-icon">📝</div>
+            <div class="info-content">
+              <div class="info-number">{{ subtitles.length }}</div>
+              <div class="info-label">Subtitles</div>
+              <div class="info-desc">Total entries</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Processing Control -->
-    <div v-if="subtitles && subtitles.length > 0" class="card">
-      <div class="card-content control-content">
+    <div v-if="subtitles && subtitles.length > 0" class="card control-card">
+      <div class="card-content">
         <button 
           @click="start" 
           :disabled="isRunning || !apiKey || !folderPath"
-          class="btn start-btn"
-          :class="isRunning ? 'btn-warning' : 'btn-success'"
+          class="btn btn-start"
+          :class="{ 'processing': isRunning }"
         >
-          <span v-if="!isRunning" class="btn-content">
+          <div v-if="!isRunning" class="btn-content">
             <span class="btn-icon">▶️</span>
-            <span>Start</span>
-          </span>
-          <span v-else class="btn-content processing">
+            <span class="btn-text">Start Translation</span>
+          </div>
+          <div v-else class="btn-content processing">
             <div class="loading-spinner"></div>
-            <span>Đang dịch phụ đề...</span>
-          </span>
+            <span class="btn-text">Translating Subtitles...</span>
+          </div>
         </button>
+        
+        <div v-if="isRunning" class="progress-section">
+          <div class="progress-bar">
+            <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+          </div>
+          <div class="progress-text">{{ Math.round(progressPercentage) }}% Complete</div>
+        </div>
       </div>
     </div>
 
-    <!-- Statistics Summary -->
+    <!-- Statistics Grid -->
     <div v-if="subtitles && subtitles.length > 0" class="stats-grid">
       <div class="stat-card info">
-        <div class="stat-number">📊 {{ subtitles.length }}</div>
-        <div class="stat-label">Tổng số phụ đề</div>
+        <div class="stat-icon">📊</div>
+        <div class="stat-content">
+          <div class="stat-number">{{ subtitles.length }}</div>
+          <div class="stat-label">Total Subtitles</div>
+        </div>
       </div>
       <div class="stat-card success">
-        <div class="stat-number">✅ {{ completedCount }}</div>
-        <div class="stat-label">Đã xử lý</div>
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+          <div class="stat-number">{{ completedCount }}</div>
+          <div class="stat-label">Completed</div>
+        </div>
       </div>
       <div class="stat-card warning">
-        <div class="stat-number">📋 {{ pendingCount }}</div>
-        <div class="stat-label">Chờ xử lý</div>
+        <div class="stat-icon">⏳</div>
+        <div class="stat-content">
+          <div class="stat-number">{{ pendingCount }}</div>
+          <div class="stat-label">Pending</div>
+        </div>
       </div>
       <div class="stat-card primary">
-        <div class="stat-number">🔗 {{ processedChunks }}</div>
-        <div class="stat-label">Đã xử lý {{ processedChunks }} đoạn</div>
+        <div class="stat-icon">🔗</div>
+        <div class="stat-content">
+          <div class="stat-number">{{ processedChunks }}</div>
+          <div class="stat-label">Processed Chunks</div>
+        </div>
       </div>
     </div>
 
     <!-- Chunk Status -->
-    <div v-if="chunks && chunks.length > 1" class="card">
+    <div v-if="chunks && chunks.length > 1" class="card chunks-card">
       <div class="card-header">
         <div class="card-icon">🧩</div>
-        <h3 class="card-title">Trạng thái các đoạn:</h3>
+        <h3 class="card-title">Chunk Processing Status</h3>
       </div>
       <div class="card-content">
         <div class="chunk-grid">
@@ -201,12 +242,19 @@
             class="chunk-card"
             :class="getChunkStatusClass(chunk.status)"
           >
-            <div class="chunk-title">Đoạn {{ index + 1 }}</div>
-            <div class="chunk-time">{{ chunk.startTime }} – {{ chunk.endTime }}</div>
-            <div class="chunk-subtitle-count">{{ chunk.subtitles.length }} phụ đề</div>
-            <div class="chunk-status">
-              <div v-if="chunk.status === 'processing'" class="loading-spinner"></div>
-              <span class="chunk-status-badge" :class="chunk.status">{{ getChunkStatusText(chunk.status) }}</span>
+            <div class="chunk-header">
+              <div class="chunk-title">Chunk {{ index + 1 }}</div>
+              <div class="chunk-status-indicator" :class="chunk.status">
+                <div v-if="chunk.status === 'processing'" class="loading-spinner small"></div>
+                <span class="status-dot" :class="chunk.status"></span>
+              </div>
+            </div>
+            <div class="chunk-info">
+              <div class="chunk-time">{{ chunk.startTime }} – {{ chunk.endTime }}</div>
+              <div class="chunk-count">{{ chunk.subtitles.length }} subtitles</div>
+            </div>
+            <div class="chunk-status-text">
+              {{ getChunkStatusText(chunk.status) }}
             </div>
           </div>
         </div>
@@ -214,7 +262,7 @@
     </div>
 
     <!-- Downloaded Files -->
-    <div v-if="downloadedFiles.length > 0" class="card">
+    <div v-if="downloadedFiles.length > 0" class="card downloads-card">
       <div class="card-header success">
         <div class="card-icon">📥</div>
         <h3 class="card-title">Downloaded Files ({{ downloadedFiles.length }})</h3>
@@ -222,24 +270,25 @@
       <div class="card-content">
         <div class="downloads-grid">
           <div v-for="file in downloadedFiles" :key="file" class="download-item">
-            <span class="download-icon">📄</span>
-            <span class="download-name">{{ file }}</span>
+            <div class="download-icon">📄</div>
+            <div class="download-name">{{ file }}</div>
+            <div class="download-status">✅</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Pagination Controls -->
-    <div v-if="subtitles && subtitles.length > 0" class="card">
+    <div v-if="subtitles && subtitles.length > 0" class="card pagination-card">
       <div class="card-header">
         <div class="card-icon">📄</div>
-        <h3 class="card-title">Hiển thị:</h3>
+        <h3 class="card-title">Subtitle Display</h3>
       </div>
       <div class="card-content">
         <div class="pagination-controls">
           <div class="pagination-info">
             <label class="form-label">Items per page:</label>
-            <select v-model="itemsPerPage" @change="currentPage = 1" class="form-select pagination-select">
+            <select v-model="itemsPerPage" @change="currentPage = 1" class="form-select compact">
               <option value="10">10</option>
               <option value="25">25</option>
               <option value="50">50</option>
@@ -247,23 +296,23 @@
               <option value="all">All</option>
             </select>
             <span v-if="itemsPerPage !== 'all'" class="pagination-text">
-              ({{ startIndex + 1 }}-{{ endIndex }} của {{ subtitles.length }} mục)
+              Showing {{ startIndex + 1 }}-{{ endIndex }} of {{ subtitles.length }} items
             </span>
           </div>
           
           <div v-if="itemsPerPage !== 'all'" class="pagination-buttons">
             <button @click="goToPage(1)" :disabled="currentPage === 1" class="btn btn-sm">
-              ⏮️ Đầu
+              ⏮️ First
             </button>
             <button @click="goToPage(currentPage - 1)" :disabled="currentPage === 1" class="btn btn-sm">
-              ⏪ Trước
+              ⏪ Previous
             </button>
-            <span class="pagination-text">Trang {{ currentPage }} / {{ totalPages }}</span>
+            <span class="page-info">Page {{ currentPage }} / {{ totalPages }}</span>
             <button @click="goToPage(currentPage + 1)" :disabled="currentPage === totalPages" class="btn btn-sm">
-              Tiếp ⏩
+              Next ⏩
             </button>
             <button @click="goToPage(totalPages)" :disabled="currentPage === totalPages" class="btn btn-sm">
-              Cuối ⏭️
+              Last ⏭️
             </button>
           </div>
         </div>
@@ -272,60 +321,77 @@
 
     <!-- Subtitle Table -->
     <div v-if="subtitles && subtitles.length > 0" class="table-container">
-      <table class="table">
-        <thead>
-          <tr>
-            <th class="col-index">Stt</th>
-            <th class="col-original">Nội dung gốc</th>
-            <th class="col-translated">Nội dung đã dịch</th>
-            <th class="col-status">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="subtitle in paginatedSubtitles" :key="subtitle.index" class="table-row">
-            <td class="index-cell">{{ subtitle.index }}</td>
-            <td class="content-cell">
-              <div v-if="subtitle.startTime" class="timestamp">
-                {{ subtitle.startTime }} → {{ subtitle.endTime }}
-              </div>
-              <div class="subtitle-text original">{{ subtitle.text }}</div>
-            </td>
-            <td class="content-cell">
-              <div v-if="subtitle.startTime" class="timestamp">
-                {{ subtitle.startTime }} → {{ subtitle.endTime }}
-              </div>
-              <div v-if="subtitle.translatedText" class="subtitle-text translated">
-                {{ subtitle.translatedText }}
-              </div>
-              <div v-else class="subtitle-text placeholder">
-                Chưa dịch
-              </div>
-            </td>
-            <td class="status-cell">
-              <div class="status-wrapper">
-                <div v-if="subtitle.status === 'processing'" class="loading-spinner"></div>
-                <span class="badge" :class="getStatusBadgeClass(subtitle.status)">{{ getStatusText(subtitle.status) }}</span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-header">
+        <h3 class="table-title">Subtitle Content</h3>
+      </div>
+      <div class="table-wrapper">
+        <table class="subtitle-table">
+          <thead>
+            <tr>
+              <th class="col-index">Index</th>
+              <th class="col-original">Original Content</th>
+              <th class="col-translated">Translated Content</th>
+              <th class="col-status">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="subtitle in paginatedSubtitles" :key="subtitle.index" class="subtitle-row">
+              <td class="index-cell">
+                <div class="index-number">{{ subtitle.index }}</div>
+              </td>
+              <td class="content-cell">
+                <div v-if="subtitle.startTime" class="timestamp">
+                  {{ subtitle.startTime }} → {{ subtitle.endTime }}
+                </div>
+                <div class="subtitle-text original">{{ subtitle.text }}</div>
+              </td>
+              <td class="content-cell">
+                <div v-if="subtitle.startTime" class="timestamp">
+                  {{ subtitle.startTime }} → {{ subtitle.endTime }}
+                </div>
+                <div v-if="subtitle.translatedText" class="subtitle-text translated">
+                  {{ subtitle.translatedText }}
+                </div>
+                <div v-else class="subtitle-text placeholder">
+                  Not translated yet
+                </div>
+              </td>
+              <td class="status-cell">
+                <div class="status-wrapper">
+                  <div v-if="subtitle.status === 'processing'" class="loading-spinner small"></div>
+                  <span class="status-badge" :class="getStatusBadgeClass(subtitle.status)">
+                    {{ getStatusText(subtitle.status) }}
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
-    <!-- No Data Message -->
+    <!-- Empty State -->
     <div v-if="!subtitles || subtitles.length === 0" class="empty-state">
-      <div class="empty-icon">📝</div>
-      <div class="empty-title">Chưa có dữ liệu phụ đề</div>
-      <div class="empty-description">Vui lòng tải lên file .txt hoặc .srt để bắt đầu dịch phụ đề</div>
+      <div class="empty-content">
+        <div class="empty-icon">📝</div>
+        <div class="empty-title">No Subtitle Data Available</div>
+        <div class="empty-description">
+          Please upload a .txt or .srt file to start the translation process
+        </div>
+        <div class="empty-actions">
+          <label for="file-upload" class="btn btn-primary">
+            <span class="btn-icon">📄</span>
+            <span>Upload Subtitle File</span>
+          </label>
+        </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import storage from '../utils/storage.js'
-
 export default {
-  name: "SubtitleTranslatorClassic",
+  name: "SubtitleTranslator",
   data() {
     return {
       apiKey: "",
@@ -345,6 +411,11 @@ export default {
       // Pagination
       currentPage: 1,
       itemsPerPage: 25,
+
+      // Loading states
+      apiLoading: false,
+      fileLoading: false,
+      folderLoading: false,
 
       // Language mappings
       languageNames: {
@@ -374,6 +445,11 @@ export default {
       if (this.chunks.length === 0) return 0;
       return (this.processedChunks / this.chunks.length) * 100;
     },
+    totalDuration() {
+      if (this.subtitles.length === 0) return "00:00:00";
+      const lastSubtitle = this.subtitles[this.subtitles.length - 1];
+      return lastSubtitle.endTime || "00:00:00";
+    },
     totalPages() {
       if (this.itemsPerPage === 'all') return 1;
       return Math.ceil(this.subtitles.length / parseInt(this.itemsPerPage));
@@ -393,11 +469,44 @@ export default {
       }
       return this.subtitles.slice(this.startIndex, this.endIndex);
     },
-    totalDuration() {
-      if (!this.subtitles || this.subtitles.length === 0) return "00:00:00,000";
-      const lastSubtitle = this.subtitles[this.subtitles.length - 1];
-      return lastSubtitle.endTime || "00:00:00,000";
+  },
+
+  mounted() {
+    // Load saved settings
+    const savedKey = localStorage.getItem("api-chatgpt-key");
+    if (savedKey) {
+      this.apiKey = savedKey;
     }
+
+    const savedSourceLang = localStorage.getItem("source_language");
+    if (savedSourceLang) {
+      this.sourceLanguage = savedSourceLang;
+    }
+
+    const savedTargetLang = localStorage.getItem("target_language");
+    if (savedTargetLang) {
+      this.targetLanguage = savedTargetLang;
+    }
+
+    const savedItemsPerPage = localStorage.getItem("items_per_page");
+    if (savedItemsPerPage) {
+      this.itemsPerPage = savedItemsPerPage;
+    }
+  },
+
+  watch: {
+    apiKey() {
+      this.saveApiKey();
+    },
+    sourceLanguage() {
+      localStorage.setItem("source_language", this.sourceLanguage);
+    },
+    targetLanguage() {
+      localStorage.setItem("target_language", this.targetLanguage);
+    },
+    itemsPerPage() {
+      localStorage.setItem("items_per_page", this.itemsPerPage);
+    },
   },
 
   methods: {
@@ -410,16 +519,40 @@ export default {
 
     // Choose folder for saving files
     async chooseFolder() {
+      this.folderLoading = true;
       try {
-        this.folderPath = await window.electronAPI?.chooseFolder?.() || "Downloads (default)";
-        if (this.folderPath) {
+        if (window.require) {
+          const { dialog } = window.require("electron").remote;
+          const result = await dialog.showOpenDialog({
+            properties: ["openDirectory"],
+          });
+          if (!result.canceled && result.filePaths.length > 0) {
+            this.folderPath = result.filePaths[0];
+            this.message = "Đã chọn: " + this.folderPath;
+          } else {
+            this.message = "Chưa chọn thư mục.";
+          }
+        } else if (window.electronAPI && window.electronAPI.chooseFolder) {
+          this.folderPath = await window.electronAPI.chooseFolder();
+          if (this.folderPath) {
+            this.message = "Đã chọn: " + this.folderPath;
+          } else {
+            this.message = "Chưa chọn thư mục.";
+          }
+        } else if (window.showDirectoryPicker) {
+          const dirHandle = await window.showDirectoryPicker();
+          this.folderPath = dirHandle.name;
           this.message = "Đã chọn: " + this.folderPath;
-          storage.set(storage.keys.TRANSLATOR_FOLDER_PATH, this.folderPath);
         } else {
-          this.message = "Chưa chọn thư mục.";
+          this.folderPath = "Downloads (mặc định)";
+          alert("Trình duyệt không hỗ trợ chọn thư mục. File sẽ được lưu vào thư mục Downloads.");
         }
       } catch (error) {
         console.error("Error selecting folder:", error);
+        this.folderPath = "Downloads (mặc định)";
+        alert("Không thể chọn thư mục. File sẽ được lưu vào thư mục Downloads.");
+      } finally {
+        this.folderLoading = false;
       }
     },
 
@@ -429,6 +562,7 @@ export default {
       if (!file) return;
 
       this.selectedFileName = file.name;
+      this.fileLoading = true;
       const reader = new FileReader();
       reader.onload = () => {
         this.fileContent = reader.result;
@@ -438,6 +572,7 @@ export default {
         this.createChunks();
         this.downloadedFiles = [];
         this.currentPage = 1;
+        this.fileLoading = false;
       };
       reader.readAsText(file, "utf-8");
     },
@@ -721,7 +856,7 @@ Hãy bắt đầu ngay bây giờ.`;
     // Call ChatGPT API for translation
     async generateSrt(prompt) {
       const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
+        "https://gpt1.shupremium.com/v1/chat/completions",
         {
           method: "POST",
           headers: {
@@ -729,7 +864,7 @@ Hãy bắt đầu ngay bây giờ.`;
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "gpt-3.5-turbo",
+            model: "gpt-4.1",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.7,
           }),
@@ -738,7 +873,7 @@ Hãy bắt đầu ngay bây giờ.`;
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+        throw new Error(errorData.message || `API Error: ${response.status}`);
       }
 
       const data = await response.json();
@@ -748,7 +883,12 @@ Hãy bắt đầu ngay bây giờ.`;
     // Save translated file
     async saveTranslatedFile(content, fileName) {
       try {
-        if (window.electronAPI?.saveToFolder) {
+        if (window.require) {
+          const fs = window.require("fs");
+          const path = window.require("path");
+          const filePath = path.join(this.folderPath, fileName);
+          fs.writeFileSync(filePath, content, "utf8");
+        } else if (window.electronAPI && window.electronAPI.saveToFolder) {
           const buffer = new TextEncoder().encode(content);
           await window.electronAPI.saveToFolder(
             this.folderPath,
@@ -775,13 +915,13 @@ Hãy bắt đầu ngay bây giờ.`;
     },
 
     // Status helper methods
-    getStatusBadgeClass(status) {
+    getStatusClass(status) {
       switch (status) {
-        case "success": return "badge-success";
-        case "pending": return "badge-primary";
-        case "error": return "badge-danger";
-        case "processing": return "badge-warning";
-        default: return "badge-primary";
+        case "success": return "status-success";
+        case "pending": return "status-pending";
+        case "error": return "status-error";
+        case "processing": return "status-processing";
+        default: return "status-pending";
       }
     },
 
@@ -795,57 +935,33 @@ Hãy bắt đầu ngay bây giờ.`;
       }
     },
 
-    getChunkStatusClass(status) {
-      return status || 'pending';
-    },
-
-    getChunkStatusText(status) {
-      switch(status) {
-        case 'success': return 'Hoàn thành';
-        case 'processing': return 'Đang xử lý';
-        case 'error': return 'Lỗi';
-        default: return 'Chờ xử lý';
+    getStatusBadgeClass(status) {
+      switch (status) {
+        case "success": return "badge-success";
+        case "pending": return "badge-warning";
+        case "error": return "badge-danger";
+        case "processing": return "badge-primary";
+        default: return "badge-warning";
       }
     },
 
-    saveSettings() {
-      const settings = {
-        sourceLanguage: this.sourceLanguage,
-        targetLanguage: this.targetLanguage,
-        itemsPerPage: this.itemsPerPage,
-        folderPath: this.folderPath
-      };
-      storage.setTranslatorSettings(settings);
-      storage.setTranslatorApiKey(this.apiKey);
+    getChunkStatusClass(status) {
+      return "chunk-" + status;
     },
 
-    loadSettings() {
-      const settings = storage.getTranslatorSettings();
-      this.apiKey = storage.getTranslatorApiKey() || "";
-      this.sourceLanguage = settings.sourceLanguage || "chinese";
-      this.targetLanguage = settings.targetLanguage || "vietnamese";
-      this.itemsPerPage = settings.itemsPerPage || 25;
-      this.folderPath = settings.folderPath || null;
-    }
-  },
+    getChunkStatusText(status) {
+      switch (status) {
+        case "success": return "✅ Hoàn thành";
+        case "pending": return "⏸️ Chờ xử lý";
+        case "error": return "❌ Lỗi";
+        case "processing": return "⏳ Đang xử lý";
+        default: return "⏸️ Chờ xử lý";
+      }
+    },
 
-  mounted() {
-    this.loadSettings();
-  },
-
-  watch: {
-    apiKey() {
-      this.saveSettings();
+    saveApiKey() {
+      localStorage.setItem("api-chatgpt-key", this.apiKey);
     },
-    sourceLanguage() {
-      this.saveSettings();
-    },
-    targetLanguage() {
-      this.saveSettings();
-    },
-    itemsPerPage() {
-      this.saveSettings();
-    }
   },
 };
 </script>
@@ -854,7 +970,7 @@ Hãy bắt đầu ngay bây giờ.`;
 .translator-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 20px;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -872,64 +988,28 @@ Hãy bắt đầu ngay bây giờ.`;
 
 .header-content {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.header-left {
-  display: flex;
   align-items: center;
   gap: 16px;
 }
 
-.app-icon {
-  width: 56px;
-  height: 56px;
+.header-icon {
+  font-size: 32px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
+  padding: 12px;
+  border-radius: 12px;
   backdrop-filter: blur(10px);
 }
 
-.app-title {
+.header-title {
   font-size: 28px;
   font-weight: 700;
   margin: 0 0 4px 0;
 }
 
-.app-subtitle {
+.header-subtitle {
   font-size: 16px;
   margin: 0;
   opacity: 0.9;
-}
-
-.header-right .status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  backdrop-filter: blur(10px);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ff4757;
-}
-
-.status-indicator.active .status-dot {
-  background: #2ed573;
-}
-
-.status-text {
-  font-size: 14px;
-  font-weight: 500;
 }
 
 /* Card Styles */
@@ -940,6 +1020,7 @@ Hãy bắt đầu ngay bây giờ.`;
   overflow: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
 }
 
 .card-header {
@@ -952,26 +1033,26 @@ Hãy bắt đầu ngay bây giờ.`;
 }
 
 .card-header.primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-bottom: none;
-}
-
-.card-header.info {
   background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   color: white;
   border-bottom: none;
 }
 
+.card-header.info {
+  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  color: #2d3748;
+  border-bottom: none;
+}
+
 .card-header.warning {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-  color: white;
+  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+  color: #744210;
   border-bottom: none;
 }
 
 .card-header.success {
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-  color: #2d3748;
+  background: linear-gradient(135deg, #d299c2 0%, #fef9d7 100%);
+  color: #22543d;
   border-bottom: none;
 }
 
@@ -1013,8 +1094,8 @@ Hãy bắt đầu ngay bây giờ.`;
 
 .form-input:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #4facfe;
+  box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
 }
 
 .form-select {
@@ -1030,16 +1111,20 @@ Hãy bắt đầu ngay bây giờ.`;
 
 .form-select:focus {
   outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #4facfe;
+  box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
 }
 
-.pagination-select {
+.form-select.compact {
   width: auto;
-  min-width: 100px;
+  min-width: 120px;
 }
 
-/* API Status */
+/* Input Wrapper */
+.input-wrapper {
+  position: relative;
+}
+
 .api-status {
   display: flex;
   align-items: center;
@@ -1047,15 +1132,22 @@ Hãy bắt đầu ngay bây giờ.`;
   margin-top: 8px;
 }
 
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e2e8f0;
+}
+
 .status-dot.active {
   background: #48bb78;
   box-shadow: 0 0 8px rgba(72, 187, 120, 0.4);
 }
 
-.status-message {
-  font-size: 14px;
-  color: #48bb78;
+.status-text {
+  font-size: 12px;
   font-weight: 500;
+  color: #48bb78;
 }
 
 /* Language Grid */
@@ -1126,40 +1218,26 @@ Hãy bắt đầu ngay bây giờ.`;
 }
 
 .file-name {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-top: 8px;
+  padding: 8px 12px;
+  background: #f7fafc;
+  border-radius: 8px;
   font-size: 13px;
   color: #4a5568;
-  font-weight: 500;
+}
+
+.file-icon {
+  font-size: 14px;
 }
 
 .folder-btn {
   white-space: nowrap;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.folder-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-}
-
-.folder-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.folder-path {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.folder-display {
   margin-top: 16px;
   padding: 12px 16px;
   background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
@@ -1167,84 +1245,114 @@ Hãy bắt đầu ngay bây giờ.`;
   border-left: 4px solid #48bb78;
 }
 
+.folder-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .folder-icon {
   font-size: 16px;
 }
 
-.folder-text {
+.folder-path {
   font-family: 'Monaco', 'Menlo', monospace;
   font-size: 13px;
   color: #22543d;
   font-weight: 500;
 }
 
-/* File Info */
-.file-info {
-  text-align: center;
+/* Info Grid */
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
 }
 
 .info-item {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  border-radius: 12px;
+  border-left: 4px solid #4facfe;
 }
 
 .info-icon {
-  font-size: 18px;
+  font-size: 24px;
 }
 
-.info-text {
-  font-weight: 500;
+.info-number {
+  font-size: 20px;
+  font-weight: 700;
   color: #2d3748;
 }
 
-.info-note {
+.info-label {
   font-size: 14px;
+  font-weight: 600;
+  color: #4a5568;
+}
+
+.info-desc {
+  font-size: 12px;
   color: #718096;
 }
 
-/* Control Content */
-.control-content {
-  text-align: center;
-}
-
-.start-btn {
-  width: 100%;
-  padding: 16px 24px;
-  font-size: 16px;
-  font-weight: 600;
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
   border: none;
   border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
-}
-
-.btn-success:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
-}
-
-.btn-warning {
-  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
+  transition: all 0.3s;
+  text-decoration: none;
 }
 
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
+}
+
+.btn-start {
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 16px;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.btn-start:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
+}
+
+.btn-start.processing {
+  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
+  box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
 }
 
 .btn-content {
@@ -1255,6 +1363,34 @@ Hãy bắt đầu ngay bây giờ.`;
 
 .btn-icon {
   font-size: 16px;
+}
+
+/* Progress Section */
+.progress-section {
+  margin-top: 16px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #edf2f7;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #48bb78, #38a169);
+  transition: width 0.3s;
+  border-radius: 4px;
+}
+
+.progress-text {
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: #4a5568;
 }
 
 /* Statistics Grid */
@@ -1269,7 +1405,9 @@ Hãy bắt đầu ngay bây giờ.`;
   background: white;
   border-radius: 16px;
   padding: 20px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 16px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
   border-left: 4px solid #e2e8f0;
   transition: all 0.3s;
@@ -1300,6 +1438,10 @@ Hãy bắt đầu ngay bây giờ.`;
   background: linear-gradient(135deg, #ffffff 0%, #faf5ff 100%);
 }
 
+.stat-icon {
+  font-size: 28px;
+}
+
 .stat-number {
   font-size: 24px;
   font-weight: 700;
@@ -1328,79 +1470,87 @@ Hãy bắt đầu ngay bây giờ.`;
   transition: all 0.3s;
 }
 
-.chunk-card.pending {
+.chunk-card.chunk-pending {
   border-left-color: #cbd5e0;
   background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
 }
 
-.chunk-card.processing {
+.chunk-card.chunk-processing {
   border-left-color: #ed8936;
   background: linear-gradient(135deg, #ffffff 0%, #fffaf0 100%);
   box-shadow: 0 4px 20px rgba(237, 137, 54, 0.2);
 }
 
-.chunk-card.success {
+.chunk-card.chunk-success {
   border-left-color: #48bb78;
   background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%);
 }
 
-.chunk-card.error {
+.chunk-card.chunk-error {
   border-left-color: #f56565;
   background: linear-gradient(135deg, #ffffff 0%, #fef5e7 100%);
+}
+
+.chunk-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
 }
 
 .chunk-title {
   font-weight: 600;
   color: #2d3748;
+}
+
+.chunk-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chunk-status-indicator .status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.chunk-status-indicator .status-dot.pending {
+  background: #cbd5e0;
+}
+
+.chunk-status-indicator .status-dot.processing {
+  background: #ed8936;
+}
+
+.chunk-status-indicator .status-dot.success {
+  background: #48bb78;
+}
+
+.chunk-status-indicator .status-dot.error {
+  background: #f56565;
+}
+
+.chunk-info {
   margin-bottom: 8px;
 }
 
 .chunk-time {
+  font-family: 'Monaco', 'Menlo', monospace;
   font-size: 12px;
-  color: #4a5568;
-  font-family: monospace;
+  color: #718096;
   margin-bottom: 4px;
 }
 
-.chunk-subtitle-count {
-  font-size: 14px;
-  color: #718096;
-  margin-bottom: 12px;
-}
-
-.chunk-status {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.chunk-status-badge {
-  padding: 4px 8px;
-  border-radius: 12px;
+.chunk-count {
   font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.chunk-status-badge.pending {
-  background: #e2e8f0;
   color: #4a5568;
 }
 
-.chunk-status-badge.processing {
-  background: #feebc8;
-  color: #744210;
-}
-
-.chunk-status-badge.success {
-  background: #c6f6d5;
-  color: #22543d;
-}
-
-.chunk-status-badge.error {
-  background: #fed7d7;
-  color: #742a2a;
+.chunk-status-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #4a5568;
 }
 
 /* Downloads Grid */
@@ -1425,9 +1575,14 @@ Hãy bắt đầu ngay bây giờ.`;
 }
 
 .download-name {
+  flex: 1;
   font-size: 13px;
   font-weight: 500;
   color: #22543d;
+}
+
+.download-status {
+  font-size: 16px;
 }
 
 /* Pagination */
@@ -1456,24 +1611,11 @@ Hãy bắt đầu ngay bây giờ.`;
   gap: 8px;
 }
 
-.btn-sm {
-  padding: 6px 12px;
-  background: #f7fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  cursor: pointer;
-  font-size: 12px;
-  transition: all 0.2s;
-}
-
-.btn-sm:hover:not(:disabled) {
-  background: #edf2f7;
-  border-color: #cbd5e0;
-}
-
-.btn-sm:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.page-info {
+  font-size: 14px;
+  font-weight: 500;
+  color: #4a5568;
+  margin: 0 8px;
 }
 
 /* Table */
@@ -1485,19 +1627,41 @@ Hãy bắt đầu ngay bây giờ.`;
   margin-bottom: 20px;
 }
 
-.table {
+.table-header {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.table-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.subtitle-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 14px;
 }
 
-.table th {
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+.subtitle-table th {
   padding: 16px 12px;
   text-align: left;
   font-weight: 600;
   color: #2d3748;
+  background: #f7fafc;
   border-bottom: 2px solid #e2e8f0;
+}
+
+.subtitle-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
 }
 
 .col-index {
@@ -1515,20 +1679,21 @@ Hãy bắt đầu ngay bây giờ.`;
   text-align: center;
 }
 
-.table-row:hover {
+.subtitle-row:hover {
   background: #f7fafc;
-}
-
-.table td {
-  padding: 16px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  vertical-align: top;
 }
 
 .index-cell {
   text-align: center;
+}
+
+.index-number {
   font-weight: 600;
   color: #4a5568;
+  background: #edf2f7;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-block;
 }
 
 .content-cell {
@@ -1536,7 +1701,7 @@ Hãy bắt đầu ngay bây giờ.`;
 }
 
 .timestamp {
-  font-family: monospace;
+  font-family: 'Monaco', 'Menlo', monospace;
   font-size: 11px;
   color: #718096;
   margin-bottom: 8px;
@@ -1546,18 +1711,21 @@ Hãy bắt đầu ngay bây giờ.`;
   display: inline-block;
 }
 
+.subtitle-text {
+  line-height: 1.6;
+}
+
 .subtitle-text.original {
   color: #2d3748;
-  font-weight: 400;
 }
 
 .subtitle-text.translated {
-  color: #4a90e2;
+  color: #4facfe;
   font-weight: 500;
 }
 
 .subtitle-text.placeholder {
-  color: #999;
+  color: #a0aec0;
   font-style: italic;
 }
 
@@ -1569,10 +1737,10 @@ Hãy bắt đầu ngay bây giờ.`;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.badge {
+.status-badge {
   padding: 4px 8px;
   border-radius: 12px;
   font-size: 11px;
@@ -1580,22 +1748,22 @@ Hãy bắt đầu ngay bây giờ.`;
   text-transform: uppercase;
 }
 
-.badge-success {
+.status-badge.badge-success {
   background: #c6f6d5;
   color: #22543d;
 }
 
-.badge-warning {
-  background: #feebc8;
+.status-badge.badge-warning {
+  background: #fbd38d;
   color: #744210;
 }
 
-.badge-danger {
+.status-badge.badge-danger {
   background: #fed7d7;
   color: #742a2a;
 }
 
-.badge-primary {
+.status-badge.badge-primary {
   background: #bee3f8;
   color: #2c5282;
 }
@@ -1608,6 +1776,12 @@ Hãy bắt đầu ngay bây giờ.`;
   border-top: 2px solid #4facfe;
   border-radius: 50%;
   animation: spin 1s linear infinite;
+}
+
+.loading-spinner.small {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
 }
 
 @keyframes spin {
@@ -1642,6 +1816,15 @@ Hãy bắt đầu ngay bây giờ.`;
   font-size: 16px;
   color: #718096;
   line-height: 1.6;
+  margin-bottom: 24px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.empty-actions {
+  display: flex;
+  justify-content: center;
 }
 
 /* Responsive Design */
@@ -1652,8 +1835,8 @@ Hãy bắt đầu ngay bây giờ.`;
 
   .header-content {
     flex-direction: column;
-    gap: 16px;
     text-align: center;
+    gap: 12px;
   }
 
   .language-grid {
@@ -1668,6 +1851,10 @@ Hãy bắt đầu ngay bây giờ.`;
   .file-grid {
     grid-template-columns: 1fr;
     gap: 16px;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
   }
 
   .stats-grid {
@@ -1690,6 +1877,15 @@ Hãy bắt đầu ngay bây giờ.`;
   .pagination-buttons {
     justify-content: center;
   }
+
+  .subtitle-table {
+    font-size: 12px;
+  }
+
+  .subtitle-table th,
+  .subtitle-table td {
+    padding: 12px 8px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1697,13 +1893,20 @@ Hãy bắt đầu ngay bây giờ.`;
     grid-template-columns: 1fr;
   }
 
-  .table {
-    font-size: 12px;
+  .stat-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 8px;
   }
 
-  .table th,
-  .table td {
-    padding: 12px 8px;
+  .pagination-buttons {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .btn-sm {
+    padding: 4px 8px;
+    font-size: 11px;
   }
 }
 </style>
