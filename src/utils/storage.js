@@ -111,6 +111,7 @@ class StorageManager {
   getTTSApiKey() {
     return this.get(this.keys.TTS_API_KEY, '')
   }
+  
 
   setTTSSettings(settings) {
     return this.set(this.keys.TTS_SETTINGS, settings)

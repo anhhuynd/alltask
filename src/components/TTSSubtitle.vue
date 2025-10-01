@@ -63,6 +63,7 @@
               v-model="voiceName" 
               placeholder="Nhập tên voice"
               class="input"
+              @keyup.enter="searchVoiceByName"
             />
           </div>
           <button 

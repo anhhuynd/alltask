@@ -12,30 +12,7 @@
     </div>
 
     <!-- API Settings Card -->
-    <div class="card api-card">
-      <div class="card-header primary">
-        <div class="card-icon">🔑</div>
-        <h3 class="card-title">API Settings</h3>
-      </div>
-      <div class="card-content">
-        <div class="form-group">
-          <label class="form-label">API Key ChatGPT:</label>
-          <div class="input-wrapper">
-            <input
-              type="password"
-              v-model="apiKey"
-              placeholder="Nhập API key ChatGPT của bạn"
-              class="form-input"
-            />
-            <div v-if="apiKey" class="api-status">
-              <div class="status-dot active"></div>
-              <span class="status-text">API Key hợp lệ</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+  
     <!-- Language Settings Card -->
     <div class="card language-card">
       <div class="card-header info">

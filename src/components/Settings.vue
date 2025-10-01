@@ -356,7 +356,16 @@ export default {
           endpoint: 'https://api.elevenlabs.io/v1',
           status: 'disconnected',
           showKey: false
-        }
+        },
+         {
+          id: 'youtube',
+          name: 'Youtube',
+          description: 'Youtube API for vsiew',
+          key: '',
+          endpoint: 'https://www.googleapis.com/youtube/v3',
+          status: 'disconnected',
+          showKey: false
+        },
       ],
       
       themes: [
