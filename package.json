@@ -31,7 +31,7 @@
     "appId": "com.huy.sub-translator",
     "productName": "APP_TASK_LIST",
     "directories": {
-      "output": "/Volumes/Elements/youtube/build3"
+      "output": "/Volumes/Elements/youtube/build4"
     },
     "files": [
       "dist/**",
