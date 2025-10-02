@@ -348,15 +348,15 @@ export default {
           status: 'disconnected',
           showKey: false
         },
-        {
-          id: 'elevenlabs',
-          name: 'ElevenLabs',
-          description: 'Text-to-Speech API for voice synthesis',
-          key: '',
-          endpoint: 'https://api.elevenlabs.io/v1',
-          status: 'disconnected',
-          showKey: false
-        },
+        // {
+        //   id: 'elevenlabs',
+        //   name: 'ElevenLabs',
+        //   description: 'Text-to-Speech API for voice synthesis',
+        //   key: '',
+        //   endpoint: 'https://api.elevenlabs.io/v1',
+        //   status: 'disconnected',
+        //   showKey: false
+        // },
          {
           id: 'youtube',
           name: 'Youtube',

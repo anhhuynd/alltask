@@ -21,7 +21,7 @@ function createWindow() {
   });
 
 
-  if (isDev) {
+  if (!isDev) {
     win.loadURL('http://localhost:5173');
     win.webContents.openDevTools();
   } else {

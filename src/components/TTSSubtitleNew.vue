@@ -77,7 +77,6 @@
           <div class="form-group">
             <label class="form-label">API Key ElevenLabs:</label>
             <input
-              type="password"
               v-model="apiKey"
               placeholder="Nhập API key ElevenLabs"
               class="form-input"

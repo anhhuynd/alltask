@@ -114,7 +114,6 @@
           <div class="input-group">
             <label>API Key ElevenLabs:</label>
             <input
-              type="password"
               v-model="apiKey"
               placeholder="Nhập API key ElevenLabs"
               class="input"
