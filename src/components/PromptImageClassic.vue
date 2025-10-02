@@ -326,7 +326,7 @@ const generatePromptFromTitle = async () => {
   isGenerating.value = true
   
   try {
-    const title = `phân tích chủ đề là "${contentTitle.value}" hãy đưa cho tôi prompt ảnh phù hợp theo dạng "Core scene description, key characters & actions, setting, mood, color accents — late‑15th‑century illuminated manuscript miniature, tempera and shell‑gold on vellum, flat medieval perspective, fine brown‑ink outlines, subtle parchment texture, 16:9 aspect, ultra‑high‑resolution (4K)", dữ liệu trả về chỉ có phần prompt ảnh, không kèm mô tả hay chú thích nào khác`
+    const title = `phân tích chủ đề là "${contentTitle.value}" hãy đưa cho tôi prompt ảnh phù hợp theo dạng "Core scene description, natural landscape elements, light and atmosphere, textures, mood, color accents — hyper-realistic nature photography, 8k ultra-sharp detail, true-to-life perspective, soft natural lighting, realistic depth of field, authentic colors, fine textures of rock, bark, water, and foliage, 16:9 aspect ratio, ultra-high-resolution (4K)", dữ liệu trả về chỉ có phần prompt ảnh, không kèm mô tả hay chú thích nào khác`
     
     const res = await fetch(
       `https://gpt1.shupremium.com/v1/chat/completions`,
@@ -392,27 +392,31 @@ const processFile = async () => {
     currentProcessingIndex.value = i
 
     try {
-      const text = `You are a scene‑selector and medieval‑illumination prompt‑writer.
+      const text = `You are a scene-selector and natural-photography prompt-writer.
 Goal
-Generate exactly ${imageNumber.value} highly‑detailed MidJourney/Stable‑Diffusion‑ready prompts.
-Each prompt must depict a different, visually distinct moment or setting from the script extract supplied below.
-All prompts must share the same art‑direction: late‑15th‑century illuminated‑manuscript miniature (tempera & shell‑gold on vellum), flat medieval perspective, limited depth cues, subtle parchment texture, delicate brown‑ink outlines, tiny gilded flourishes, no modern objects or techniques.
+Generate exactly ${imageNumber.value} highly-detailed MidJourney/Stable-Diffusion-ready prompts.
+Each prompt must depict a different, visually distinct landscape or setting from the script extract supplied below.
+
+All prompts must share the same art-direction:
+hyper-realistic nature photography, 8k ultra-sharp details, natural colors, realistic perspective, soft natural lighting, authentic depth of field.
+
 Method
 Read the script section.
 
 Identify the most picturable beats (places, actions, or moods) that occur in chronological order.
 
-Write one prompt per beat. Keep them varied—interiors vs. exteriors, day vs. night, different characters, seasons, or activities—so the final sequence feels like a visual storybook of the text.
+Write one prompt per beat. Keep them varied—dense forest, open meadow, rocky mountain pass, flowing river, misty valley, golden harvest field—so the final sequence feels like a real photographic journey through nature.
 
 Structure each prompt like this:
 
  Prompt X: "${imagePrompt.value}"
 
 Tips:
-Use archaic clothing colors (indigo, russet, saffron, teal).
-Mention small medieval props (wicker baskets, wooden buckets, iron fire‑tongs) when relevant.
-If weather matters (snow, rain, harvest sun), weave it in.
-Keep to one sentence per prompt; avoid camera jargon beyond "straight‑on" or "bird's‑eye."
+- Focus on natural details (bark texture, moss, wet leaves, rippling water, drifting clouds, layered mountains).
+- Mention time of day and weather (morning mist, golden sunset, rain-soaked earth, winter snow, summer haze).
+- Avoid fantasy or man-made props unless in the script.
+- Use tone words like tranquil, dramatic, vast, intimate to set mood.
+- One sentence per prompt; keep it vivid but realistic."
 
 Output Format
 List each prompt on its own line starting with "${(chunk.index-1) * imageNumber.value + 1} :
@@ -461,6 +465,14 @@ ${chunk.content}`
 
   isProcessing.value = false
   currentProcessingIndex.value = -1
+  const buffer = new TextEncoder().encode(finalText); 
+
+
+  await window.electronAPI.saveToFolder(
+          folderPath.value,
+          `text_final.txt`,
+          buffer
+        );
   
   // Mock file save
   console.log("Final text would be saved:", finalText)
