@@ -36,7 +36,7 @@
     <main class="app-main" :class="{ 'dark-theme': isDark }">
       <div class="content-wrapper">
         <!-- Component Display -->
-        <component :is="currentComponent" />
+        <component :is="currentComponent" @navigate="navigate"/>
       </div>
     </main>
 
@@ -147,6 +147,10 @@ export default {
     }
   },
   methods: {
+    navigate(data) {
+      this.currentComponent = data
+      localStorage.setItem('currentComponent', data)
+    },
     toggleTheme() {
       this.isDark = !this.isDark
       localStorage.setItem('theme', this.isDark ? 'dark' : 'light')

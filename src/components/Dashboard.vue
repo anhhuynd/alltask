@@ -377,16 +377,16 @@ export default {
     handleQuickAction(actionId) {
       switch(actionId) {
         case 'new-task':
-          this.$emit('navigate', 'task')
+          this.$emit('navigate', 'TaskManagerClassic')
           break
         case 'tts-convert':
-          this.$emit('navigate', 'tts')
+          this.$emit('navigate', 'TTSSubtitleNew')
           break
         case 'translate':
-          this.$emit('navigate', 'subtitle')
+          this.$emit('navigate', 'SubtitleTranslatorClassic')
           break
         case 'generate-prompt':
-          this.$emit('navigate', 'prompt')
+          this.$emit('navigate', 'PromptImageClassic')
           break
       }
     },
