@@ -55,6 +55,118 @@
       </div>
     </div>
 
+    <!-- Translation Style Settings Card -->
+    <div class="card style-card">
+      <div class="card-header success">
+        <div class="card-icon">🎭</div>
+        <h3 class="card-title">Translation Style Settings</h3>
+      </div>
+      <div class="card-content">
+        <div class="style-grid">
+          <div class="form-group">
+            <label class="form-label">Phong cách dịch:</label>
+            <select v-model="styleWrite" class="form-select">
+              <option value="">🎯 Phong cách mặc định</option>
+              <option 
+                v-for="style in translationStyles" 
+                :key="style.value" 
+                :value="style.value"
+              >
+                {{ style.icon }} {{ style.label }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Thêm phong cách mới:</label>
+            <div class="add-style-wrapper">
+              <input 
+                v-model="newStyleName" 
+                type="text" 
+                placeholder="Nhập tên phong cách (VD: Sinh tồn, Trinh thám...)"
+                class="form-input"
+                @keyup.enter="addNewStyle"
+              />
+              <button 
+                @click="addNewStyle" 
+                :disabled="!newStyleName.trim()"
+                class="btn btn-add-style"
+              >
+                <span class="btn-icon">➕</span>
+                <span>Thêm</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Style Preview -->
+        <div v-if="styleWrite" class="style-preview">
+          <div class="preview-header">
+            <span class="preview-icon">👁️</span>
+            <span class="preview-title">Phong cách hiện tại:</span>
+          </div>
+          <div class="preview-content">
+            <span class="style-badge">{{ getStyleLabel(styleWrite) }}</span>
+            <div class="style-actions">
+              <button 
+                @click="removeStyle(styleWrite)" 
+                v-if="isCustomStyle(styleWrite)"
+                class="btn btn-xs btn-danger"
+                title="Xóa phong cách này"
+              >
+                🗑️ Xóa
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Predefined Styles Info -->
+        <div class="styles-info">
+          <div class="info-header">
+            <span class="info-icon">💡</span>
+            <span class="info-title">Gợi ý phong cách:</span>
+          </div>
+          <div class="suggested-styles">
+            <button 
+              v-for="suggestion in styleSuggestions"
+              :key="suggestion"
+              @click="quickAddStyle(suggestion)"
+              class="suggestion-btn"
+              :disabled="hasStyle(suggestion)"
+            >
+              {{ suggestion }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Settings Card -->
+    <!-- <div class="card api-card">
+      <div class="card-header primary">
+        <div class="card-icon">🔑</div>
+        <h3 class="card-title">API Settings</h3>
+      </div>
+      <div class="card-content">
+        <div class="form-group">
+          <label class="form-label">ChatGPT API Key:</label>
+          <div class="input-wrapper">
+            <input 
+              v-model="apiKey" 
+              type="password" 
+              placeholder="Enter your ChatGPT API key..."
+              class="form-input"
+              :class="{ 'has-value': apiKey }"
+            />
+            <div class="api-status">
+              <div class="status-dot" :class="{ 'active': apiKey }"></div>
+              <span class="status-text">{{ apiKey ? 'API Key Set' : 'API Key Required' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div> -->
+
     <!-- File Management Card -->
     <div class="card file-card">
       <div class="card-header warning">
@@ -129,32 +241,6 @@
       </div>
     </div>
 
-    <!-- API Settings Card -->
-    <!-- <div class="card api-card">
-      <div class="card-header primary">
-        <div class="card-icon">🔑</div>
-        <h3 class="card-title">API Settings</h3>
-      </div>
-      <div class="card-content">
-        <div class="form-group">
-          <label class="form-label">ChatGPT API Key:</label>
-          <div class="input-wrapper">
-            <input 
-              v-model="apiKey" 
-              type="password" 
-              placeholder="Enter your ChatGPT API key..."
-              class="form-input"
-              :class="{ 'has-value': apiKey }"
-            />
-            <div class="api-status">
-              <div class="status-dot" :class="{ 'active': apiKey }"></div>
-              <span class="status-text">{{ apiKey ? 'API Key Set' : 'API Key Required' }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div> -->
-
     <!-- Processing Control -->
     <div v-if="subtitles && subtitles.length > 0" class="card control-card">
       <div class="card-content">
@@ -218,7 +304,7 @@
       </div>
     </div>
 
-    <!-- Translation Progress Status (Like your screenshot) -->
+    <!-- Translation Progress Status -->
     <div v-if="subtitles && subtitles.length > 0" class="card progress-status-card">
       <div class="card-header">
         <div class="card-icon">📊</div>
@@ -257,7 +343,7 @@
           </div>
         </div>
 
-        <!-- Chunk Status Grid (Like your screenshot) -->
+        <!-- Chunk Status Grid -->
         <div v-if="chunks && chunks.length > 1" class="chunk-status-section">
           <h4 class="section-title">Trạng thái các đoạn:</h4>
           <div class="chunk-status-grid">
@@ -357,7 +443,7 @@ export default {
       subtitles: [],
       fileContent: "",
       folderPath: null,
-      folderHandle: null, // Store the actual folder handle
+      folderHandle: null,
       isRunning: false,
       isExporting: false,
       exportSuccess: false,
@@ -374,6 +460,28 @@ export default {
       selectedVideoFileName: "",
       videoSrc: null,
       currentTime: 0,
+      styleWrite: "",
+      newStyleName: "",
+      
+      // Default translation styles
+      defaultTranslationStyles: [
+        { value: "sinh_ton", label: "Sinh tồn", icon: "🏕️" },
+        { value: "trinh_tham", label: "Trinh thám", icon: "🔍" },
+        { value: "hanh_dong", label: "Hành động", icon: "💥" },
+        { value: "kinh_di", label: "Kinh dị", icon: "👻" },
+        { value: "lang_man", label: "Lãng mạn", icon: "💕" },
+        { value: "hai_huoc", label: "Hài hước", icon: "😂" },
+        { value: "khoa_hoc", label: "Khoa học", icon: "🔬" },
+        { value: "lich_su", label: "Lịch sử", icon: "📜" },
+        { value: "the_thao", label: "Thể thao", icon: "⚽" },
+        { value: "am_thuc", label: "Ẩm thực", icon: "🍽️" }
+      ],
+
+      // Style suggestions for quick add
+      styleSuggestions: [
+        "Phiêu lưu", "Tâm lý", "Tội phạm", "Chiến tranh", 
+        "Tài liệu", "Giáo dục", "Công nghệ", "Du lịch"
+      ],
 
       // Language mappings
       languageNames: {
@@ -386,54 +494,47 @@ export default {
         spanish: "tiếng Tây Ban Nha",
         thai: "tiếng Thái",
         vietnamese: "tiếng Việt",
-      },
+      }
     };
   },
 
   computed: {
+    translationStyles() {
+      return [...this.defaultTranslationStyles, ...this.customStyles];
+    },
+
+    customStyles() {
+      const saved = localStorage.getItem('custom_translation_styles');
+      return saved ? JSON.parse(saved) : [];
+    },
+
     completedCount() {
       return this.subtitles.filter((s) => s.status === "success" || s.status === "edited").length;
     },
+
     pendingCount() {
       return this.subtitles.filter(
         (s) => s.status === "pending" || s.status === "Prepare"
       ).length;
     },
+
     progressPercentage() {
       if (this.chunks.length === 0) return 0;
       return (this.processedChunks / this.chunks.length) * 100;
     },
+
     exportProgressPercentage() {
       if (this.totalExportFiles === 0) return 0;
       return (this.exportedFileCount / this.totalExportFiles) * 100;
     },
+
     hasTranslatedContent() {
       return this.subtitles.some(s => s.translatedText && s.translatedText.trim() !== '');
     }
   },
 
   mounted() {
-    // Load saved settings
-    const savedKey = localStorage.getItem("api-chatgpt-key");
-    if (savedKey) {
-      this.apiKey = savedKey;
-    }
-
-    const savedSourceLang = localStorage.getItem("source_language");
-    if (savedSourceLang) {
-      this.sourceLanguage = savedSourceLang;
-    }
-
-    const savedTargetLang = localStorage.getItem("target_language");
-    if (savedTargetLang) {
-      this.targetLanguage = savedTargetLang;
-    }
-
-    // Load saved folder path
-    const savedFolderPath = localStorage.getItem("selected_folder_path");
-    if (savedFolderPath) {
-      this.folderPath = savedFolderPath;
-    }
+    this.loadSettings();
   },
 
   watch: {
@@ -446,6 +547,9 @@ export default {
     targetLanguage() {
       localStorage.setItem("target_language", this.targetLanguage);
     },
+    styleWrite() {
+      localStorage.setItem("translation_style", this.styleWrite);
+    },
     folderPath() {
       if (this.folderPath) {
         localStorage.setItem("selected_folder_path", this.folderPath);
@@ -453,7 +557,6 @@ export default {
     },
     exportSuccess(newValue) {
       if (newValue) {
-        // Reset success state after 3 seconds
         setTimeout(() => {
           this.exportSuccess = false;
         }, 3000);
@@ -462,7 +565,116 @@ export default {
   },
 
   methods: {
-    // Handle subtitle file upload
+    // Load saved settings
+    loadSettings() {
+      const savedKey = localStorage.getItem("api-chatgpt-key");
+      if (savedKey) {
+        this.apiKey = savedKey;
+      }
+
+      const savedSourceLang = localStorage.getItem("source_language");
+      if (savedSourceLang) {
+        this.sourceLanguage = savedSourceLang;
+      }
+
+      const savedTargetLang = localStorage.getItem("target_language");
+      if (savedTargetLang) {
+        this.targetLanguage = savedTargetLang;
+      }
+
+      const savedStyle = localStorage.getItem("translation_style");
+      if (savedStyle) {
+        this.styleWrite = savedStyle;
+      }
+
+      const savedFolderPath = localStorage.getItem("selected_folder_path");
+      if (savedFolderPath) {
+        this.folderPath = savedFolderPath;
+      }
+    },
+
+    // Translation Style Management
+    addNewStyle() {
+      const styleName = this.newStyleName.trim();
+      if (!styleName) return;
+
+      // Check if style already exists
+      if (this.hasStyle(styleName)) {
+        alert(`Phong cách "${styleName}" đã tồn tại!`);
+        return;
+      }
+
+      // Create new style object
+      const newStyle = {
+        value: this.generateStyleValue(styleName),
+        label: styleName,
+        icon: this.getRandomIcon(),
+        custom: true
+      };
+
+      // Save to localStorage
+      const customStyles = this.customStyles;
+      customStyles.push(newStyle);
+      localStorage.setItem('custom_translation_styles', JSON.stringify(customStyles));
+
+      // Set as current style
+      this.styleWrite = newStyle.value;
+      this.newStyleName = "";
+
+      // Show success message
+      this.showToast(`Đã thêm phong cách "${styleName}" thành công!`, 'success');
+    },
+
+    quickAddStyle(styleName) {
+      this.newStyleName = styleName;
+      this.addNewStyle();
+    },
+
+    removeStyle(styleValue) {
+      if (!this.isCustomStyle(styleValue)) return;
+
+      if (confirm('Bạn có chắc muốn xóa phong cách này?')) {
+        const customStyles = this.customStyles.filter(s => s.value !== styleValue);
+        localStorage.setItem('custom_translation_styles', JSON.stringify(customStyles));
+        
+        // Reset current style if it's the one being removed
+        if (this.styleWrite === styleValue) {
+          this.styleWrite = "";
+        }
+
+        this.showToast('Đã xóa phong cách thành công!', 'success');
+      }
+    },
+
+    hasStyle(styleName) {
+      const allStyles = this.translationStyles;
+      return allStyles.some(style => 
+        style.label.toLowerCase() === styleName.toLowerCase()
+      );
+    },
+
+    isCustomStyle(styleValue) {
+      return this.customStyles.some(s => s.value === styleValue);
+    },
+
+    getStyleLabel(styleValue) {
+      const style = this.translationStyles.find(s => s.value === styleValue);
+      return style ? `${style.icon} ${style.label}` : styleValue;
+    },
+
+    generateStyleValue(styleName) {
+      return styleName.toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '')
+        .substring(0, 20);
+    },
+
+    getRandomIcon() {
+      const icons = ['🎭', '🎪', '🎨', '🎬', '🎯', '🎲', '🎸', '🎺', '🎻', '🎤', '🎧', '🎮', '🎰', '🎳'];
+      return icons[Math.floor(Math.random() * icons.length)];
+    },
+
+    // File handling methods
     handleSubtitleFile(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -474,13 +686,11 @@ export default {
         this.parseSubtitles(this.fileContent);
         this.createChunks();
         this.downloadedFiles = [];
-        // Reset export success state when new file is loaded
         this.exportSuccess = false;
       };
       reader.readAsText(file, "utf-8");
     },
 
-    // Handle video file upload
     handleVideoFile(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -489,36 +699,31 @@ export default {
       this.videoSrc = URL.createObjectURL(file);
     },
 
-    // Handle time update from video player
+    // Video player event handlers
     handleTimeUpdate(time) {
       this.currentTime = time;
     },
 
-    // Handle seek from video player
     handleSeek(time) {
       this.currentTime = time;
     },
 
-    // Handle subtitle update from table
     handleSubtitleUpdate(index, newText) {
       const subtitle = this.subtitles.find(s => s.index === index);
       if (subtitle) {
         subtitle.translatedText = newText;
-        // Mark as edited if it has translated content
         if (newText.trim() !== '') {
           subtitle.status = 'edited';
         }
-        // Reset export success state when content is edited
         this.exportSuccess = false;
       }
     },
 
-    // Handle seek to subtitle from table
     handleSeekTo(time) {
       this.currentTime = time;
     },
 
-    // Export edited subtitles as chunked files
+    // Export methods
     async exportEditedSubtitles() {
       if (!this.hasTranslatedContent) {
         alert("No translated content to export.");
@@ -541,7 +746,6 @@ export default {
           const chunk = chunksWithTranslations[i];
           const chunkIndex = this.chunks.indexOf(chunk);
           
-          // Get subtitles for this chunk that have translations
           const chunkSubtitlesWithTranslations = chunk.subtitles.filter(s => 
             s.translatedText && s.translatedText.trim() !== ''
           );
@@ -559,7 +763,6 @@ export default {
             await this.saveTranslatedFile(srtContent, fileName);
             this.exportedFileCount++;
 
-            // Add delay between file exports for better UX
             if (i < chunksWithTranslations.length - 1) {
               await new Promise((resolve) => setTimeout(resolve, 500));
             }
@@ -585,10 +788,8 @@ export default {
       }
     },
 
-    // Download individual chunk file
     async downloadChunkFile(chunk, chunkIndex) {
       try {
-        const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
         const chunkSubtitlesWithTranslations = chunk.subtitles.filter(s => 
           s.translatedText && s.translatedText.trim() !== ''
         );
@@ -608,7 +809,7 @@ export default {
       }
     },
 
-    // Choose folder for saving files
+    // Folder selection
     async chooseFolder() {
       this.folderLoading = true;
       try {
@@ -647,7 +848,7 @@ export default {
       }
     },
 
-    // Parse SRT content into subtitles array
+    // Subtitle parsing
     parseSubtitles(srtText) {
       const newSubtitles = [];
       const blocks = srtText.trim().split("\n\n");
@@ -680,7 +881,7 @@ export default {
       console.log("Parsed subtitles:", newSubtitles.length);
     },
 
-    // Convert time string to seconds
+    // Time conversion utilities
     timeToSeconds(timeStr) {
       if (!timeStr) return 0;
       const parts = timeStr.split(":");
@@ -688,7 +889,6 @@ export default {
       return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + seconds;
     },
 
-    // Convert seconds to time string
     secondsToTime(seconds) {
       const hours = Math.floor(seconds / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
@@ -706,7 +906,7 @@ export default {
       );
     },
 
-    // Create chunks of subtitles
+    // Chunk creation
     createChunks() {
       if (this.subtitles.length === 0) return;
 
@@ -756,14 +956,21 @@ export default {
       console.log("Created chunks:", newChunks.length);
     },
 
-    // Generate translation prompt
+    // Translation prompt generation
     generateTranslationPrompt(chunkSrtContent) {
       const sourceLangName = this.languageNames[this.sourceLanguage];
       const targetLangName = this.languageNames[this.targetLanguage];
+      
+      let styleInstruction = "";
+      if (this.styleWrite) {
+        const currentStyle = this.translationStyles.find(s => s.value === this.styleWrite);
+        const styleName = currentStyle ? currentStyle.label : this.styleWrite;
+        styleInstruction = ` theo phong cách ${styleName}`;
+      }
 
       return `Bạn là một chuyên gia dịch thuật và làm phụ đề phim. 
 Nhiệm vụ của bạn: 
-1. Dịch tất cả các đoạn hội thoại dưới đây từ ${sourceLangName} sang ${targetLangName}, giữ nguyên nghĩa tự nhiên, dễ hiểu và sát ngữ cảnh. 
+1. Dịch tất cả các đoạn hội thoại dưới đây từ ${sourceLangName} sang ${targetLangName}, giữ nguyên nghĩa tự nhiên, dễ hiểu và sát ngữ cảnh${styleInstruction}. 
 2. Xuất kết quả dưới định dạng phụ đề chuẩn .srt, có đánh số thứ tự, thời gian bắt đầu và kết thúc theo chuẩn phụ đề (giữ nguyên mốc thời gian từ dữ liệu gốc).
 3. Chỉ xuất ra nội dung phụ đề .srt, không giải thích thêm gì khác.
 
@@ -771,15 +978,6 @@ Dưới đây là dữ liệu ${sourceLangName} kèm timestamp để bạn dịc
 ${chunkSrtContent}
 
 Hãy bắt đầu ngay bây giờ.`;
-    },
-
-    // Generate filename for chunk
-    generateChunkFileName(chunkIndex, totalChunks) {
-      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
-      if (totalChunks === 1) {
-        return `sub_${timestamp}.srt`;
-      }
-      return `sub_${(chunkIndex + 1).toString().padStart(2, '0')}_${timestamp}.srt`;
     },
 
     // Main processing function
@@ -817,10 +1015,7 @@ Hãy bắt đầu ngay bây giờ.`;
             const fileName = this.generateChunkFileName(i, this.chunks.length);
             chunk.fileName = fileName;
 
-            // Save the translated file
-            // await this.saveTranslatedFile(translatedSrt, fileName);
             this.downloadedFiles.push(fileName);
-
             chunk.status = "success";
 
             // Update subtitles with translations
@@ -877,7 +1072,15 @@ Hãy bắt đầu ngay bây giờ.`;
       }
     },
 
-    // Create SRT content from subtitles array
+    // Utility methods
+    generateChunkFileName(chunkIndex, totalChunks) {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[:-]/g, '');
+      if (totalChunks === 1) {
+        return `sub_${timestamp}.srt`;
+      }
+      return `sub_${(chunkIndex + 1).toString().padStart(2, '0')}_${timestamp}.srt`;
+    },
+
     createSrtFromSubtitles(subtitles) {
       return subtitles
         .map((subtitle) => {
@@ -895,7 +1098,6 @@ Hãy bắt đầu ngay bây giờ.`;
         .join("\n\n");
     },
 
-    // Parse translated chunk response
     parseTranslatedChunk(srtText) {
       const newSubtitles = [];
       const blocks = srtText.trim().split("\n\n");
@@ -924,7 +1126,7 @@ Hãy bắt đầu ngay bây giờ.`;
       return newSubtitles;
     },
 
-    // Call ChatGPT API for translation
+    // API call
     async generateSrt(prompt) {
       const response = await fetch(
         "https://gpt1.shupremium.com/v1/chat/completions",
@@ -951,9 +1153,8 @@ Hãy bắt đầu ngay bây giờ.`;
       return data.choices[0].message.content;
     },
 
-    // Save translated file
+    // File saving
     async saveTranslatedFile(content, fileName) {
-
       try {
         if (window.require) {
           const fs = window.require("fs");
@@ -1014,6 +1215,32 @@ Hãy bắt đầu ngay bây giờ.`;
     saveApiKey() {
       localStorage.setItem("api-chatgpt-key", this.apiKey);
     },
+
+    // Toast notification helper
+    showToast(message, type = 'info') {
+      // Simple toast implementation
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${type === 'success' ? '#48bb78' : type === 'error' ? '#f56565' : '#4facfe'};
+        color: white;
+        border-radius: 8px;
+        z-index: 10000;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.remove();
+      }, 3000);
+    }
   },
 };
 </script>
@@ -1102,6 +1329,12 @@ Hãy bắt đầu ngay bây giờ.`;
   border-bottom: none;
 }
 
+.card-header.success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+  border-bottom: none;
+}
+
 .card-icon {
   font-size: 20px;
 }
@@ -1183,6 +1416,151 @@ Hãy bắt đầu ngay bây giờ.`;
   background: linear-gradient(135deg, #4facfe, #00f2fe);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+}
+
+/* Style Grid */
+.style-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.add-style-wrapper {
+  display: flex;
+  gap: 8px;
+}
+
+.add-style-wrapper .form-input {
+  flex: 1;
+}
+
+.btn-add-style {
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  border: none;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  white-space: nowrap;
+}
+
+.btn-add-style:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.btn-add-style:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Style Preview */
+.style-preview {
+  background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-left: 4px solid #48bb78;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.preview-icon {
+  font-size: 16px;
+}
+
+.preview-title {
+  font-weight: 600;
+  color: #22543d;
+  font-size: 14px;
+}
+
+.preview-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.style-badge {
+  background: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #22543d;
+  border: 1px solid #9ae6b4;
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
+}
+
+/* Styles Info */
+.styles-info {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-radius: 12px;
+  padding: 16px;
+  border-left: 4px solid #0ea5e9;
+}
+
+.info-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.info-icon {
+  font-size: 16px;
+}
+
+.info-title {
+  font-weight: 600;
+  color: #0c4a6e;
+  font-size: 14px;
+}
+
+.suggested-styles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggestion-btn {
+  background: white;
+  border: 1px solid #0ea5e9;
+  color: #0c4a6e;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.suggestion-btn:hover:not(:disabled) {
+  background: #0ea5e9;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.suggestion-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* File Management */
@@ -1730,6 +2108,10 @@ Hãy bắt đầu ngay bây giờ.`;
   .stats-grid {
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
+
+  .style-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
@@ -1767,6 +2149,18 @@ Hãy bắt đầu ngay bây giờ.`;
   
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .style-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .add-style-wrapper {
+    flex-direction: column;
+  }
+
+  .suggested-styles {
+    justify-content: center;
   }
 }
 </style>
