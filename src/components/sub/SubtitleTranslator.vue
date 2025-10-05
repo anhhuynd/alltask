@@ -346,13 +346,13 @@
             >
               <span class="character-icon">👤</span>
               <span class="character-name">{{ name }}</span>
-              <button 
+              <span 
                 @click.stop="copyCharacterName(name)"
                 class="copy-btn"
                 title="Copy tên nhân vật"
               >
                 📋
-              </button>
+              </span>
             </button>
           </div>
         </div>

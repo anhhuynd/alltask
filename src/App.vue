@@ -82,7 +82,7 @@ import Settings from './components/Settings.vue'
 import TTSSubtitleNew from './components/TTSSubtitleNew.vue'
 import SubtitleTranslatorClassic from './components/sub/SubtitleTranslator.vue'
 import PromptImageClassic from './components/PromptImageClassic.vue'
-import TaskManagerClassic from './components/TaskManagerClassic.vue'
+import TaskManagerClassic from './components/TaskYouTubeManager.vue'
 import VoiceClonerVue from './components/voice/voice-cloner.vue'
 
 export default {
@@ -139,12 +139,12 @@ export default {
           icon: '📅',
           label: 'Task Manager'
         },
-         {
-          id: 'voice',
-          component: 'VoiceClonerVue',
-          icon: '📅',
-          label: 'Voice Cloner'
-        },
+        //  {
+        //   id: 'voice',
+        //   component: 'VoiceClonerVue',
+        //   icon: '📅',
+        //   label: 'Voice Cloner'
+        // },
         {
           id: 'settings',
           component: 'Settings',
