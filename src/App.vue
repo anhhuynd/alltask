@@ -80,7 +80,7 @@
 import Dashboard from './components/Dashboard.vue'
 import Settings from './components/Settings.vue'
 import TTSSubtitleNew from './components/TTSSubtitleNew.vue'
-import SubtitleTranslatorClassic from './components/SubtitleTranslatorClassicNew.vue'
+import SubtitleTranslatorClassic from './components/sub/SubtitleTranslator.vue'
 import PromptImageClassic from './components/PromptImageClassic.vue'
 import TaskManagerClassic from './components/TaskManagerClassic.vue'
 

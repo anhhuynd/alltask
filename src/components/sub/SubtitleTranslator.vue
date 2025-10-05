@@ -6,7 +6,162 @@
         <div class="header-icon">🌐</div>
         <div class="header-text">
           <h1 class="header-title">Enhanced Subtitle Translator</h1>
-          <p class="header-subtitle">AI-powered subtitle translation with batch processing and text editing</p>
+          <p class="header-subtitle">AI-powered subtitle translation with project management</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Project Management Card -->
+    <div class="card project-card">
+      <div class="card-header primary">
+        <div class="card-icon">📁</div>
+        <h3 class="card-title">Project Management</h3>
+      </div>
+      <div class="card-content">
+        <div class="project-grid">
+          <div class="form-group">
+            <label class="form-label">Chọn dự án:</label>
+            <select v-model="currentProject" @change="loadProject" class="form-select">
+              <option value="">-- Chọn dự án --</option>
+              <option 
+                v-for="project in projects" 
+                :key="project.id" 
+                :value="project.id"
+              >
+                {{ project.name }} ({{ project.subtitleCount }} phụ đề)
+              </option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Tạo dự án mới:</label>
+            <div class="project-input-wrapper">
+              <input 
+                v-model="newProjectName" 
+                type="text" 
+                placeholder="Nhập tên dự án..."
+                class="form-input"
+                @keyup.enter="createProject"
+              />
+              <button 
+                @click="createProject" 
+                :disabled="!newProjectName.trim()"
+                class="btn btn-success btn-sm"
+              >
+                <span class="btn-icon">➕</span>
+                <span>Tạo</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Thời gian chia đoạn (phút):</label>
+            <input 
+              v-model.number="chunkDurationMinutes" 
+              type="number" 
+              min="1" 
+              max="10" 
+              class="form-input"
+              @change="updateChunkSettings"
+            />
+          </div>
+        </div>
+
+        <!-- Current Project Info -->
+        <div v-if="currentProjectData" class="project-info">
+          <div class="project-header">
+            <h4 class="project-name">📂 {{ currentProjectData.name }}</h4>
+            <div class="project-actions">
+              <button 
+                @click="showProjectSettings = true" 
+                class="btn btn-outline btn-xs"
+              >
+                ⚙️ Cài đặt
+              </button>
+              <button 
+                @click="deleteProject" 
+                class="btn btn-danger btn-xs"
+                :disabled="!currentProject"
+              >
+                🗑️ Xóa
+              </button>
+            </div>
+          </div>
+          
+          <div class="project-stats">
+            <div class="stat-item-mini">
+              <span class="stat-icon-mini">📝</span>
+              <span class="stat-text">{{ currentProjectData.subtitleCount || 0 }} phụ đề</span>
+            </div>
+            <div class="stat-item-mini">
+              <span class="stat-icon-mini">👥</span>
+              <span class="stat-text">{{ currentProjectData.characterNames?.length || 0 }} nhân vật</span>
+            </div>
+            <div class="stat-item-mini">
+              <span class="stat-icon-mini">⏱️</span>
+              <span class="stat-text">{{ chunkDurationMinutes }} phút/đoạn</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project Settings Modal -->
+        <div v-if="showProjectSettings" class="modal-overlay" @click.self="closeProjectSettings">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h3 class="modal-title">Cài đặt dự án</h3>
+              <button @click="closeProjectSettings" class="btn btn-xs btn-outline">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label class="form-label">Tên dự án:</label>
+                <input 
+                  v-model="currentProjectData.name" 
+                  type="text" 
+                  class="form-input"
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Mô tả:</label>
+                <textarea 
+                  v-model="currentProjectData.description" 
+                  class="form-textarea"
+                  rows="3"
+                  placeholder="Mô tả về dự án..."
+                ></textarea>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Tên nhân vật đã lưu:</label>
+                <div class="character-list">
+                  <div 
+                    v-for="(name, index) in currentProjectData.characterNames || []" 
+                    :key="index"
+                    class="character-item"
+                  >
+                    <span class="character-name">{{ name }}</span>
+                    <button 
+                      @click="removeCharacterName(index)" 
+                      class="btn btn-xs btn-danger"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div v-if="!currentProjectData.characterNames?.length" class="no-characters">
+                    Chưa có tên nhân vật nào được lưu
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button @click="saveProjectSettings" class="btn btn-primary">
+                <span class="btn-icon">💾</span>
+                <span>Lưu thay đổi</span>
+              </button>
+              <button @click="closeProjectSettings" class="btn btn-outline">
+                <span class="btn-icon">❌</span>
+                <span>Hủy bỏ</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -174,6 +329,34 @@
         <h3 class="card-title">Batch Text Editor</h3>
       </div>
       <div class="card-content">
+        <!-- Saved Character Names from Project (Priority Display) -->
+        <div v-if="currentProjectData?.characterNames?.length" class="saved-characters-section">
+          <div class="saved-characters-header">
+            <span class="saved-characters-title">👥 Tên nhân vật đã lưu trong dự án:</span>
+            <span class="saved-characters-count">({{ currentProjectData.characterNames.length }} tên)</span>
+          </div>
+          <div class="saved-character-buttons">
+            <button 
+              v-for="name in currentProjectData.characterNames" 
+              :key="name"
+              @click="selectSavedCharacterForEdit(name)"
+              class="saved-character-btn"
+              :class="{ 'active': findText === name, 'highlighted': isCharacterHighlighted(name) }"
+              :title="`Click để chọn '${name}' cho tìm kiếm/thay thế`"
+            >
+              <span class="character-icon">👤</span>
+              <span class="character-name">{{ name }}</span>
+              <button 
+                @click.stop="copyCharacterName(name)"
+                class="copy-btn"
+                title="Copy tên nhân vật"
+              >
+                📋
+              </button>
+            </button>
+          </div>
+        </div>
+
         <div class="editor-grid">
           <div class="form-group">
             <label class="form-label">Tìm kiếm:</label>
@@ -265,12 +448,26 @@
                 v-for="(name, index) in detectedNames" 
                 :key="index"
                 class="name-item"
-                :class="{ 'selected': selectedNames.includes(name.text) }"
+                :class="{ 
+                  'selected': selectedNames.includes(name.text),
+                  'already-saved': isNameAlreadySaved(name.text),
+                  'highlighted': isCharacterHighlighted(name.text)
+                }"
                 @click="toggleNameSelection(name.text)"
               >
                 <div class="name-info">
-                  <div class="name-text">{{ name.text }}</div>
+                  <div class="name-text">
+                    {{ name.text }}
+                    <span v-if="isNameAlreadySaved(name.text)" class="saved-indicator" title="Đã lưu trong dự án">✅</span>
+                  </div>
                   <div class="name-count">{{ name.count }} lần</div>
+                  <button 
+                    @click.stop="copyCharacterName(name.text)"
+                    class="copy-btn-small"
+                    title="Copy tên nhân vật"
+                  >
+                    📋
+                  </button>
                 </div>
                 <div class="name-type">{{ getNameType(name.type) }}</div>
               </div>
@@ -287,12 +484,63 @@
               </button>
               
               <button 
-                @click="addToCustomNames" 
-                :disabled="selectedNames.length === 0"
+                @click="confirmSaveCharacterNames" 
+                :disabled="selectedNames.length === 0 || !currentProject"
                 class="btn btn-sm btn-success"
               >
-                <span class="btn-icon">➕</span>
-                <span>Thêm vào danh sách</span>
+                <span class="btn-icon">💾</span>
+                <span>Lưu vào dự án ({{ selectedNames.length }})</span>
+              </button>
+
+              <button 
+                @click="autoAddNewNames" 
+                :disabled="newDetectedNames.length === 0 || !currentProject"
+                class="btn btn-sm btn-info"
+              >
+                <span class="btn-icon">⚡</span>
+                <span>Tự động thêm mới ({{ newDetectedNames.length }})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Character Names Save Confirmation -->
+        <div v-if="showSaveNamesConfirm" class="save-names-modal">
+          <div class="modal-overlay" @click.self="closeSaveNamesConfirm"></div>
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3 class="modal-title">Lưu tên nhân vật</h3>
+              <button @click="closeSaveNamesConfirm" class="btn btn-xs btn-outline">✕</button>
+            </div>
+            <div class="modal-body">
+              <p class="confirm-text">
+                Bạn có muốn lưu {{ selectedNames.length }} tên nhân vật sau vào dự án 
+                <strong>"{{ currentProjectData?.name }}"</strong> không?
+              </p>
+              <div class="names-to-save">
+                <div 
+                  v-for="name in selectedNames" 
+                  :key="name"
+                  class="name-to-save"
+                >
+                  👤 {{ name }}
+                </div>
+              </div>
+              <div class="save-options">
+                <label class="checkbox-label">
+                  <input type="checkbox" v-model="replaceExistingNames" class="checkbox-input">
+                  <span class="checkbox-text">Thay thế danh sách tên hiện có</span>
+                </label>
+              </div>
+            </div>
+            <div class="modal-actions">
+              <button @click="saveCharacterNamesToProject" class="btn btn-success">
+                <span class="btn-icon">💾</span>
+                <span>Lưu tên nhân vật</span>
+              </button>
+              <button @click="closeSaveNamesConfirm" class="btn btn-outline">
+                <span class="btn-icon">❌</span>
+                <span>Hủy bỏ</span>
               </button>
             </div>
           </div>
@@ -300,7 +548,7 @@
 
         <!-- Preview Modal -->
         <div v-if="showPreview" class="preview-modal">
-          <div class="preview-overlay" @click="closePreview"></div>
+          <div class="preview-overlay" @click.self="closePreview"></div>
           <div class="preview-content">
             <div class="preview-header">
               <h3 class="preview-title">Xem trước thay đổi</h3>
@@ -704,6 +952,7 @@
           :highlightedText="findText"
           :detectedNames="detectedNames"
           :selectedNames="selectedNames"
+          :characterNames="currentProjectData?.characterNames || []"
           @updateSubtitle="handleSubtitleUpdate"
           @seekTo="handleSeekTo"
         />
@@ -769,6 +1018,14 @@ export default {
       styleWrite: "",
       newStyleName: "",
       
+      // Project Management
+      projects: [],
+      currentProject: "",
+      currentProjectData: null,
+      newProjectName: "",
+      showProjectSettings: false,
+      chunkDurationMinutes: 3,
+      
       // Batch Processing
       srtFiles: [],
       outputFolderPath: null,
@@ -795,6 +1052,9 @@ export default {
       selectedNames: [],
       isDetectingNames: false,
       customNames: [],
+      showSaveNamesConfirm: false,
+      replaceExistingNames: false,
+      highlightedCharacters: [], // New: Track highlighted characters
       
       // Default translation styles
       defaultTranslationStyles: [
@@ -863,11 +1123,21 @@ export default {
 
     hasTranslatedContent() {
       return this.subtitles.some(s => s.translatedText && s.translatedText.trim() !== '');
+    },
+
+    // New: Get newly detected names that aren't saved yet
+    newDetectedNames() {
+      if (!this.currentProjectData?.characterNames) return this.detectedNames;
+      
+      return this.detectedNames.filter(name => 
+        !this.currentProjectData.characterNames.includes(name.text)
+      );
     }
   },
 
   mounted() {
     this.loadSettings();
+    this.loadProjects();
   },
 
   watch: {
@@ -902,6 +1172,25 @@ export default {
     },
     findText() {
       this.highlightMatches();
+    },
+    currentProject() {
+      if (this.currentProject) {
+        this.saveCurrentProject();
+      }
+    },
+    chunkDurationMinutes() {
+      if (this.subtitles.length > 0) {
+        this.createChunks();
+      }
+      this.saveProjectSettings();
+    },
+    subtitles: {
+      handler() {
+        if (this.currentProject && this.subtitles.length > 0) {
+          this.updateProjectSubtitleCount();
+        }
+      },
+      deep: true
     }
   },
 
@@ -942,6 +1231,220 @@ export default {
       if (savedCustomNames) {
         this.customNames = JSON.parse(savedCustomNames);
       }
+
+      const savedCurrentProject = localStorage.getItem("current_project");
+      if (savedCurrentProject) {
+        this.currentProject = savedCurrentProject;
+      }
+    },
+
+    // Project Management Methods
+    loadProjects() {
+      const saved = localStorage.getItem('subtitle_projects');
+      if (saved) {
+        this.projects = JSON.parse(saved);
+      }
+      
+      if (this.currentProject) {
+        this.loadProject();
+      }
+    },
+
+    saveProjects() {
+      localStorage.setItem('subtitle_projects', JSON.stringify(this.projects));
+    },
+
+    saveCurrentProject() {
+      localStorage.setItem('current_project', this.currentProject);
+    },
+
+    createProject() {
+      if (!this.newProjectName.trim()) return;
+
+      const projectId = Date.now().toString();
+      const newProject = {
+        id: projectId,
+        name: this.newProjectName.trim(),
+        description: "",
+        characterNames: [],
+        chunkDurationMinutes: 3,
+        subtitleCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      this.projects.push(newProject);
+      this.saveProjects();
+      
+      this.currentProject = projectId;
+      this.currentProjectData = { ...newProject };
+      this.chunkDurationMinutes = newProject.chunkDurationMinutes;
+      this.newProjectName = "";
+
+      this.showToast(`Đã tạo dự án "${newProject.name}" thành công!`, 'success');
+    },
+
+    loadProject() {
+      if (!this.currentProject) {
+        this.currentProjectData = null;
+        return;
+      }
+
+      const project = this.projects.find(p => p.id === this.currentProject);
+      if (project) {
+        this.currentProjectData = { ...project };
+        this.chunkDurationMinutes = project.chunkDurationMinutes || 3;
+      }
+    },
+
+    updateProjectSubtitleCount() {
+      if (!this.currentProject || !this.currentProjectData) return;
+
+      this.currentProjectData.subtitleCount = this.subtitles.length;
+      
+      const projectIndex = this.projects.findIndex(p => p.id === this.currentProject);
+      if (projectIndex !== -1) {
+        this.projects[projectIndex].subtitleCount = this.subtitles.length;
+        this.projects[projectIndex].updatedAt = new Date().toISOString();
+        this.saveProjects();
+      }
+    },
+
+    updateChunkSettings() {
+      if (this.subtitles.length > 0) {
+        this.createChunks();
+      }
+    },
+
+    saveProjectSettings() {
+      if (!this.currentProject || !this.currentProjectData) return;
+
+      this.currentProjectData.updatedAt = new Date().toISOString();
+      
+      const projectIndex = this.projects.findIndex(p => p.id === this.currentProject);
+      if (projectIndex !== -1) {
+        this.projects[projectIndex] = { ...this.currentProjectData };
+        this.projects[projectIndex].chunkDurationMinutes = this.chunkDurationMinutes;
+        this.saveProjects();
+      }
+    },
+
+    closeProjectSettings() {
+      this.showProjectSettings = false;
+    },
+
+    removeCharacterName(index) {
+      if (this.currentProjectData?.characterNames) {
+        this.currentProjectData.characterNames.splice(index, 1);
+      }
+    },
+
+    deleteProject() {
+      if (!this.currentProject) return;
+
+      const project = this.projects.find(p => p.id === this.currentProject);
+      if (!project) return;
+
+      if (confirm(`Bạn có chắc muốn xóa dự án "${project.name}"?`)) {
+        this.projects = this.projects.filter(p => p.id !== this.currentProject);
+        this.saveProjects();
+        
+        this.currentProject = "";
+        this.currentProjectData = null;
+        
+        this.showToast('Đã xóa dự án thành công!', 'success');
+      }
+    },
+
+    // Enhanced Character Names Management
+    selectSavedCharacterForEdit(name) {
+      this.findText = name;
+      this.highlightMatches();
+      this.addToHighlightedCharacters(name);
+    },
+
+    // New: Copy character name to clipboard
+    async copyCharacterName(name) {
+      try {
+        await navigator.clipboard.writeText(name);
+        this.showToast(`Đã copy "${name}" vào clipboard!`, 'success');
+      } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = name;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        this.showToast(`Đã copy "${name}" vào clipboard!`, 'success');
+      }
+    },
+
+    // New: Check if character name is already saved in project
+    isNameAlreadySaved(name) {
+      return this.currentProjectData?.characterNames?.includes(name) || false;
+    },
+
+    // New: Check if character is highlighted
+    isCharacterHighlighted(name) {
+      return this.highlightedCharacters.includes(name);
+    },
+
+    // New: Add character to highlighted list
+    addToHighlightedCharacters(name) {
+      if (!this.highlightedCharacters.includes(name)) {
+        this.highlightedCharacters.push(name);
+      }
+    },
+
+    // New: Auto-add new detected names to project
+    autoAddNewNames() {
+      if (!this.currentProject || !this.currentProjectData || this.newDetectedNames.length === 0) return;
+
+      const namesToAdd = this.newDetectedNames.map(name => name.text);
+      const existingNames = this.currentProjectData.characterNames || [];
+      
+      this.currentProjectData.characterNames = [...existingNames, ...namesToAdd];
+      this.saveProjectSettings();
+
+      // Highlight all newly added names
+      namesToAdd.forEach(name => this.addToHighlightedCharacters(name));
+
+      this.showToast(`Đã tự động thêm ${namesToAdd.length} tên nhân vật mới!`, 'success');
+    },
+
+    confirmSaveCharacterNames() {
+      if (!this.currentProject || this.selectedNames.length === 0) return;
+      this.showSaveNamesConfirm = true;
+    },
+
+    closeSaveNamesConfirm() {
+      this.showSaveNamesConfirm = false;
+      this.replaceExistingNames = false;
+    },
+
+    saveCharacterNamesToProject() {
+      if (!this.currentProject || !this.currentProjectData) return;
+
+      if (this.replaceExistingNames) {
+        this.currentProjectData.characterNames = [...this.selectedNames];
+      } else {
+        // Merge with existing names, avoid duplicates
+        const existingNames = this.currentProjectData.characterNames || [];
+        const newNames = this.selectedNames.filter(name => !existingNames.includes(name));
+        this.currentProjectData.characterNames = [...existingNames, ...newNames];
+      }
+
+      this.saveProjectSettings();
+      this.closeSaveNamesConfirm();
+      
+      // Highlight all saved names
+      this.selectedNames.forEach(name => this.addToHighlightedCharacters(name));
+      
+      const savedCount = this.selectedNames.length;
+      this.selectedNames = [];
+
+      this.showToast(`Đã lưu ${savedCount} tên nhân vật vào dự án!`, 'success');
     },
 
     // Batch Text Editor Methods
@@ -1245,7 +1748,8 @@ export default {
     },
 
     highlightSelectedNames() {
-      // This will be handled by the SubtitleTable component
+      // Add selected names to highlighted characters
+      this.selectedNames.forEach(name => this.addToHighlightedCharacters(name));
       this.showToast(`Đã highlight ${this.selectedNames.length} tên riêng`, 'success');
     },
 
@@ -1544,7 +2048,7 @@ export default {
     },
 
     getRandomIcon() {
-      const icons = ['🎭', '🎪', '🎨', '🎬', '🎯', '🎲', '🎸', '🎺', '🎻', '🎤', '🎧', '🎮', '🎰', '🎳'];
+      const icons = ['🎭', '🎪', '🎨', '🎬', '🎯', '🎸', '🎹', '🎻', '🎺', '🎧', '🎮', '🎰', '🎳'];
       return icons[Math.floor(Math.random() * icons.length)];
     },
 
@@ -1685,7 +2189,6 @@ export default {
 
     // Folder selection
     async chooseFolder() {
-      this.folderLoading = true;
       try {
         if (window.require) {
           const { dialog } = window.require("electron").remote;
@@ -1694,21 +2197,12 @@ export default {
           });
           if (!result.canceled && result.filePaths.length > 0) {
             this.folderPath = result.filePaths[0];
-            this.message = "Đã chọn: " + this.folderPath;
-          } else {
-            this.message = "Chưa chọn thư mục.";
           }
         } else if (window.electronAPI && window.electronAPI.chooseFolder) {
           this.folderPath = await window.electronAPI.chooseFolder();
-          if (this.folderPath) {
-            this.message = "Đã chọn: " + this.folderPath;
-          } else {
-            this.message = "Chưa chọn thư mục.";
-          }
         } else if (window.showDirectoryPicker) {
           const dirHandle = await window.showDirectoryPicker();
           this.folderPath = dirHandle.name;
-          this.message = "Đã chọn: " + this.folderPath;
         } else {
           this.folderPath = "Downloads (mặc định)";
           alert("Trình duyệt không hỗ trợ chọn thư mục. File sẽ được lưu vào thư mục Downloads.");
@@ -1717,8 +2211,6 @@ export default {
         console.error("Error selecting folder:", error);
         this.folderPath = "Downloads (mặc định)";
         alert("Không thể chọn thư mục. File sẽ được lưu vào thư mục Downloads.");
-      } finally {
-        this.folderLoading = false;
       }
     },
 
@@ -1780,12 +2272,12 @@ export default {
       );
     },
 
-    // Chunk creation
+    // Chunk creation with custom duration
     createChunks() {
       if (this.subtitles.length === 0) return;
 
       const newChunks = [];
-      const maxChunkDuration = 180; // 3 minutes
+      const maxChunkDuration = this.chunkDurationMinutes * 60; // Convert to seconds
       let currentChunk = [];
       let chunkStartTime = 0;
 
@@ -1827,7 +2319,7 @@ export default {
       }
 
       this.chunks = newChunks;
-      console.log("Created chunks:", newChunks.length);
+      console.log("Created chunks:", newChunks.length, "with duration:", this.chunkDurationMinutes, "minutes");
     },
 
     // Translation prompt generation
@@ -2119,1401 +2611,4 @@ Hãy bắt đầu ngay bây giờ.`;
 };
 </script>
 
-<style scoped>
-.translator-container {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-/* Header Section */
-.header-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
-  color: white;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-icon {
-  font-size: 32px;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 12px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
-}
-
-.header-title {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0 0 4px 0;
-}
-
-.header-subtitle {
-  font-size: 16px;
-  margin: 0;
-  opacity: 0.9;
-}
-
-/* Card Styles */
-.card {
-  background: white;
-  border-radius: 16px;
-  margin-bottom: 20px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-}
-
-.card-header {
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-bottom: 1px solid #f0f0f0;
-  font-weight: 600;
-}
-
-.card-header.primary {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
-  border-bottom: none;
-}
-
-.card-header.info {
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-  color: #2d3748;
-  border-bottom: none;
-}
-
-.card-header.warning {
-  background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-  color: #744210;
-  border-bottom: none;
-}
-
-.card-header.success {
-  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-  color: #155724;
-  border-bottom: none;
-}
-
-.card-icon {
-  font-size: 20px;
-}
-
-.card-title {
-  font-size: 18px;
-  margin: 0;
-}
-
-.card-content {
-  padding: 20px;
-}
-
-/* Batch Text Editor */
-.batch-editor-card {
-  border-left: 4px solid #ed8936;
-}
-
-.editor-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.editor-options {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.checkbox-input {
-  width: 16px;
-  height: 16px;
-  accent-color: #4facfe;
-}
-
-.checkbox-text {
-  color: #4a5568;
-  font-weight: 500;
-}
-
-.editor-actions {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-/* Proper Names Section */
-.proper-names-section {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-radius: 12px;
-  padding: 16px;
-  border-left: 4px solid #0ea5e9;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #0c4a6e;
-  margin: 0;
-}
-
-.names-list {
-  margin-top: 16px;
-}
-
-.names-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.name-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: white;
-  border-radius: 8px;
-  border: 2px solid #e0f2fe;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.name-item:hover {
-  border-color: #0ea5e9;
-  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
-}
-
-.name-item.selected {
-  border-color: #0ea5e9;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-}
-
-.name-info {
-  flex: 1;
-}
-
-.name-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #0c4a6e;
-  margin-bottom: 2px;
-}
-
-.name-count {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.name-type {
-  font-size: 11px;
-  padding: 2px 6px;
-  background: #0ea5e9;
-  color: white;
-  border-radius: 4px;
-  white-space: nowrap;
-}
-
-.names-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-
-/* Preview Modal */
-.preview-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.preview-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-}
-
-.preview-content {
-  position: relative;
-  background: white;
-  border-radius: 16px;
-  max-width: 800px;
-  max-height: 80vh;
-  width: 90%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-}
-
-.preview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.preview-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #2d3748;
-  margin: 0;
-}
-
-.preview-body {
-  padding: 20px;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.preview-stats {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  padding: 12px 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  font-weight: 500;
-  color: #0c4a6e;
-}
-
-.preview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.preview-item {
-  display: flex;
-  gap: 12px;
-  padding: 12px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border-left: 4px solid #cbd5e0;
-}
-
-.change-index {
-  font-size: 12px;
-  font-weight: 600;
-  color: #64748b;
-  min-width: 40px;
-}
-
-.change-content {
-  flex: 1;
-}
-
-.change-before {
-  font-size: 13px;
-  color: #dc2626;
-  margin-bottom: 4px;
-}
-
-.change-after {
-  font-size: 13px;
-  color: #059669;
-}
-
-.preview-more {
-  text-align: center;
-  padding: 12px;
-  color: #64748b;
-  font-style: italic;
-}
-
-.preview-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  padding: 20px;
-  border-top: 1px solid #e2e8f0;
-}
-
-/* Batch File Management */
-.batch-section {
-  margin-bottom: 24px;
-  padding: 16px;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 12px;
-  border-left: 4px solid #64748b;
-}
-
-.batch-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.batch-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1e293b;
-  margin: 0;
-}
-
-.batch-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.files-list {
-  margin-top: 16px;
-}
-
-.files-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding: 8px 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-}
-
-.files-count {
-  font-size: 14px;
-  font-weight: 600;
-  color: #475569;
-}
-
-.files-size {
-  font-size: 12px;
-  color: #64748b;
-}
-
-.files-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-
-.file-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: white;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
-  transition: all 0.2s;
-}
-
-.file-item:hover {
-  border-color: #cbd5e0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.file-info {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex: 1;
-}
-
-.file-icon {
-  font-size: 20px;
-}
-
-.file-details {
-  flex: 1;
-}
-
-.file-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #1e293b;
-  margin-bottom: 2px;
-}
-
-.file-meta {
-  font-size: 12px;
-  color: #64748b;
-}
-
-/* Batch Controls */
-.batch-controls {
-  margin-top: 24px;
-  padding: 20px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-radius: 12px;
-  border-left: 4px solid #0ea5e9;
-}
-
-.control-buttons {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.btn-merge-srt {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(240, 147, 251, 0.3);
-}
-
-.btn-merge-srt:hover:not(:disabled) {
-  transform: translateY(-2px);
-}
-
-.btn-merge-srt.processing {
-  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
-  box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
-}
-
-/* Batch Progress */
-.batch-progress-section {
-  margin-top: 16px;
-}
-
-.batch-progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #e0f2fe;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.batch-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #0ea5e9, #0284c7);
-  transition: width 0.3s ease;
-  border-radius: 4px;
-}
-
-.batch-progress-text {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 500;
-  color: #0c4a6e;
-}
-
-/* Form Elements */
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-label {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 8px;
-}
-
-.form-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 14px;
-  background: white;
-  transition: all 0.3s;
-}
-
-.form-input:focus {
-  outline: none;
-  border-color: #4facfe;
-  box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
-}
-
-.form-select {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  font-size: 14px;
-  background: white;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.form-select:focus {
-  outline: none;
-  border-color: #4facfe;
-  box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
-}
-
-/* Language Grid */
-.language-grid {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 20px;
-  align-items: end;
-}
-
-.arrow-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding-bottom: 8px;
-}
-
-.arrow-icon {
-  font-size: 24px;
-  font-weight: bold;
-  color: #4facfe;
-  background: linear-gradient(135deg, #4facfe, #00f2fe);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-/* Style Grid */
-.style-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.add-style-wrapper {
-  display: flex;
-  gap: 8px;
-}
-
-.add-style-wrapper .form-input {
-  flex: 1;
-}
-
-.btn-add-style {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-  color: white;
-  border: none;
-  padding: 12px 16px;
-  border-radius: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  white-space: nowrap;
-}
-
-.btn-add-style:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
-}
-
-.btn-add-style:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* Style Preview */
-.style-preview {
-  background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 20px;
-  border-left: 4px solid #48bb78;
-}
-
-.preview-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.preview-icon {
-  font-size: 16px;
-}
-
-.preview-title {
-  font-weight: 600;
-  color: #22543d;
-  font-size: 14px;
-}
-
-.preview-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.style-badge {
-  background: white;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #22543d;
-  border: 1px solid #9ae6b4;
-}
-
-.btn-danger {
-  background: linear-gradient(135deg, #f56565 0%, #e53e3e 100%);
-  color: white;
-}
-
-.btn-danger:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(245, 101, 101, 0.3);
-}
-
-/* Styles Info */
-.styles-info {
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-radius: 12px;
-  padding: 16px;
-  border-left: 4px solid #0ea5e9;
-}
-
-.info-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.info-icon {
-  font-size: 16px;
-}
-
-.info-title {
-  font-weight: 600;
-  color: #0c4a6e;
-  font-size: 14px;
-}
-
-.suggested-styles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.suggestion-btn {
-  background: white;
-  border: 1px solid #0ea5e9;
-  color: #0c4a6e;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.suggestion-btn:hover:not(:disabled) {
-  background: #0ea5e9;
-  color: white;
-  transform: translateY(-1px);
-}
-
-.suggestion-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* File Management */
-.file-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr auto;
-  gap: 20px;
-  align-items: end;
-}
-
-.file-input-wrapper {
-  position: relative;
-}
-
-.file-input {
-  position: absolute;
-  opacity: 0;
-  width: 100%;
-  height: 100%;
-  cursor: pointer;
-}
-
-.file-input-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
-  border: 2px dashed #cbd5e0;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s;
-  font-weight: 500;
-  color: #4a5568;
-}
-
-.file-input-label:hover {
-  background: linear-gradient(135deg, #edf2f7 0%, #e2e8f0 100%);
-  border-color: #4facfe;
-}
-
-.upload-icon {
-  font-size: 18px;
-}
-
-.file-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 8px 12px;
-  background: #f7fafc;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #4a5568;
-}
-
-.file-icon {
-  font-size: 14px;
-}
-
-.folder-btn {
-  white-space: nowrap;
-}
-
-.folder-display {
-  margin-top: 16px;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
-  border-radius: 12px;
-  border-left: 4px solid #48bb78;
-}
-
-.folder-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.folder-icon {
-  font-size: 16px;
-}
-
-.folder-path {
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 13px;
-  color: #22543d;
-  font-weight: 500;
-}
-
-/* Input Wrapper */
-.input-wrapper {
-  position: relative;
-}
-
-.api-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #e2e8f0;
-}
-
-.status-dot.active {
-  background: #48bb78;
-  box-shadow: 0 0 8px rgba(72, 187, 120, 0.4);
-}
-
-.status-text {
-  font-size: 12px;
-  font-weight: 500;
-  color: #48bb78;
-}
-
-/* Control Buttons */
-.control-buttons {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 12px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s;
-  text-decoration: none;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.btn-xs {
-  padding: 4px 8px;
-  font-size: 11px;
-}
-
-.btn-sm {
-  padding: 8px 12px;
-  font-size: 12px;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(79, 172, 254, 0.3);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(79, 172, 254, 0.4);
-}
-
-.btn-secondary {
-  background: linear-gradient(135deg, #a8a8a8 0%, #8c8c8c 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(168, 168, 168, 0.3);
-}
-
-.btn-outline {
-  background: white;
-  border: 2px solid #e2e8f0;
-  color: #4a5568;
-}
-
-.btn-outline:hover:not(:disabled) {
-  border-color: #cbd5e0;
-  background: #f7fafc;
-}
-
-.btn-start {
-  flex: 1;
-  padding: 16px 24px;
-  font-size: 16px;
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
-}
-
-.btn-start:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(72, 187, 120, 0.4);
-}
-
-.btn-start.processing {
-  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
-  box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
-}
-
-.btn-export {
-  background: linear-gradient(135deg, #9f7aea 0%, #805ad5 100%);
-  color: white;
-  box-shadow: 0 4px 15px rgba(159, 122, 234, 0.3);
-  transition: all 0.3s ease;
-}
-
-.btn-export:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(159, 122, 234, 0.4);
-}
-
-.btn-export.exporting {
-  background: linear-gradient(135deg, #ed8936 0%, #dd6b20 100%);
-  box-shadow: 0 4px 15px rgba(237, 137, 54, 0.3);
-}
-
-.btn-export.export-success {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-  box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
-}
-
-.btn-success {
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(72, 187, 120, 0.3);
-}
-
-.btn-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-content.success {
-  animation: successPulse 0.6s ease-in-out;
-}
-
-.btn-icon {
-  font-size: 16px;
-}
-
-/* Progress Section */
-.progress-section {
-  margin-top: 16px;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #edf2f7;
-  border-radius: 4px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #48bb78, #38a169);
-  transition: width 0.3s;
-  border-radius: 4px;
-}
-
-.progress-text {
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: #4a5568;
-}
-
-/* Export Progress Section */
-.export-progress-section {
-  margin-top: 16px;
-  padding: 12px;
-  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-  border-radius: 8px;
-  border-left: 4px solid #0ea5e9;
-}
-
-.export-progress-bar {
-  width: 100%;
-  height: 6px;
-  background: #e0f2fe;
-  border-radius: 3px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-
-.export-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #0ea5e9, #0284c7);
-  transition: width 0.3s ease;
-  border-radius: 3px;
-}
-
-.export-progress-text {
-  text-align: center;
-  font-size: 13px;
-  font-weight: 500;
-  color: #0c4a6e;
-}
-
-/* Progress Status Card */
-.progress-status-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-  border: 2px solid #e2e8f0;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  background: white;
-  border-radius: 12px;
-  border-left: 4px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.stat-item.success {
-  border-left-color: #48bb78;
-  background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%);
-}
-
-.stat-item.warning {
-  border-left-color: #ed8936;
-  background: linear-gradient(135deg, #ffffff 0%, #fffaf0 100%);
-}
-
-.stat-item.info {
-  border-left-color: #4facfe;
-  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-}
-
-.stat-icon {
-  font-size: 24px;
-}
-
-.stat-content {
-  flex: 1;
-}
-
-.stat-number {
-  font-size: 24px;
-  font-weight: 700;
-  color: #2d3748;
-  line-height: 1;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #718096;
-  font-weight: 500;
-  text-transform: uppercase;
-}
-
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 16px;
-}
-
-/* Chunk Status Grid */
-.chunk-status-section {
-  margin-top: 24px;
-}
-
-.chunk-status-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-}
-
-.chunk-status-card {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  border-left: 4px solid #e2e8f0;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.chunk-status-card.chunk-pending {
-  border-left-color: #cbd5e0;
-  background: linear-gradient(135deg, #ffffff 0%, #f7fafc 100%);
-}
-
-.chunk-status-card.chunk-processing {
-  border-left-color: #ed8936;
-  background: linear-gradient(135deg, #ffffff 0%, #fffaf0 100%);
-  box-shadow: 0 4px 20px rgba(237, 137, 54, 0.2);
-}
-
-.chunk-status-card.chunk-success {
-  border-left-color: #48bb78;
-  background: linear-gradient(135deg, #ffffff 0%, #f0fff4 100%);
-}
-
-.chunk-status-card.chunk-error {
-  border-left-color: #f56565;
-  background: linear-gradient(135deg, #ffffff 0%, #fef5e7 100%);
-}
-
-.chunk-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.chunk-title {
-  font-weight: 600;
-  color: #2d3748;
-  font-size: 14px;
-}
-
-.chunk-status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.status-icon {
-  font-size: 16px;
-}
-
-.chunk-info {
-  margin-bottom: 8px;
-}
-
-.chunk-time {
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 11px;
-  color: #718096;
-  margin-bottom: 4px;
-}
-
-.chunk-count {
-  font-size: 12px;
-  color: #4a5568;
-}
-
-.chunk-status-text {
-  font-size: 12px;
-  font-weight: 500;
-  color: #4a5568;
-  margin-bottom: 8px;
-}
-
-.chunk-actions {
-  display: flex;
-  justify-content: center;
-}
-
-/* Main Content Area - Updated Layout (1:2 ratio) */
-.main-content {
-  display: grid;
-  grid-template-columns: 1fr 2fr; /* Video 1/3, Table 2/3 */
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.video-section {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-.table-section {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-/* Loading Spinner */
-.loading-spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #4facfe;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-.loading-spinner.small {
-  width: 16px;
-  height: 16px;
-  border-width: 2px;
-}
-
-.loading-spinner.export-spinner {
-  border-top-color: #ed8936;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes successPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-/* Empty State */
-.empty-state {
-  background: white;
-  border-radius: 16px;
-  padding: 60px 20px;
-  text-align: center;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-}
-
-.empty-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-  opacity: 0.6;
-}
-
-.empty-title {
-  font-size: 24px;
-  font-weight: 600;
-  color: #2d3748;
-  margin-bottom: 12px;
-}
-
-.empty-description {
-  font-size: 16px;
-  color: #718096;
-  line-height: 1.6;
-  margin-bottom: 24px;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.empty-actions {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-}
-
-/* Responsive Design */
-@media (max-width: 1024px) {
-  .main-content {
-    grid-template-columns: 1fr;
-  }
-  
-  .stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  }
-
-  .style-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .control-buttons {
-    flex-direction: column;
-  }
-
-  .editor-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .translator-container {
-    padding: 16px;
-  }
-
-  .header-content {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-  }
-
-  .language-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .arrow-container {
-    order: 3;
-  }
-
-  .file-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-
-  .control-buttons {
-    flex-direction: column;
-  }
-
-  .chunk-status-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .style-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .add-style-wrapper {
-    flex-direction: column;
-  }
-
-  .suggested-styles {
-    justify-content: center;
-  }
-
-  .batch-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-
-  .batch-actions {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .files-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-
-  .editor-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .editor-actions {
-    flex-direction: column;
-  }
-
-  .names-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .names-actions {
-    flex-direction: column;
-  }
-
-  .preview-content {
-    width: 95%;
-    margin: 0 auto;
-  }
-
-  .preview-actions {
-    flex-direction: column;
-  }
-}
-</style>
+<style src="./SubtitleTranslator.css" scoped></style>
