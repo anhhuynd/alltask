@@ -1,28 +1,17 @@
 <template>
-  <div class="task-progress" :class="timeBasedTheme">
-    <div class="progress-stats">
-      <div class="stat-item">
-        <div class="stat-number">{{ completedTasksCount }}</div>
-        <div class="stat-label">Đã hoàn thành</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">{{ remainingTasksCount }}</div>
-        <div class="stat-label">Còn lại</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number">{{ totalTasksCount }}</div>
-        <div class="stat-label">Tổng cộng</div>
+  <div class="progress-card">
+    <div class="progress-header">
+      <h3>📊 Tiến độ hôm nay</h3>
+      <div class="progress-stats">
+        <span class="completed">{{ completedTasksCount }} hoàn thành</span>
+        <span class="remaining">{{ remainingTasksCount }} còn lại</span>
       </div>
     </div>
-    <div class="progress-bar">
-      <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
-    </div>
-    <div class="progress-text">
-      {{ progressPercentage }}% hoàn thành
-    </div>
-    <div class="time-indicator">
-      <span class="current-time">{{ currentTime }}</span>
-      <span class="time-period">{{ timePeriodText }}</span>
+    <div class="progress-bar-container">
+      <div class="progress-bar">
+        <div class="progress-fill" :style="{ width: progressPercentage + '%' }"></div>
+      </div>
+      <span class="progress-text">{{ progressPercentage }}%</span>
     </div>
   </div>
 </template>
@@ -33,124 +22,88 @@ export default {
   props: {
     completedTasksCount: {
       type: Number,
-      default: 0
+      required: true
     },
     remainingTasksCount: {
       type: Number,
-      default: 0
+      required: true
     },
     totalTasksCount: {
       type: Number,
-      default: 0
+      required: true
     }
   },
   computed: {
     progressPercentage() {
       if (this.totalTasksCount === 0) return 0
       return Math.round((this.completedTasksCount / this.totalTasksCount) * 100)
-    },
-    
-    currentTime() {
-      return new Date().toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    },
-    
-    timePeriodText() {
-      const hour = new Date().getHours()
-      if (hour < 12) return 'Buổi sáng'
-      if (hour < 18) return 'Buổi chiều'
-      return 'Buổi tối'
-    },
-    
-    timeBasedTheme() {
-      const hour = new Date().getHours()
-      if (hour < 6) return 'night'
-      if (hour < 12) return 'morning'
-      if (hour < 18) return 'afternoon'
-      return 'evening'
     }
   }
 }
 </script>
 
 <style scoped>
-.task-progress {
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(20px);
+.progress-card {
+  background: #ffffff;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.progress-header h3 {
+  margin: 0;
+  color: #000000;
+  font-weight: 700;
 }
 
 .progress-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #4f46e5;
-  margin-bottom: 4px;
-}
-
-.stat-label {
+  display: flex;
+  gap: 16px;
   font-size: 0.9rem;
-  color: #666;
-  font-weight: 500;
+}
+
+.progress-stats .completed {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.progress-stats .remaining {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .progress-bar {
+  flex: 1;
   height: 8px;
-  background: rgba(79, 70, 229, 0.1);
+  background: #e5e5e5;
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 12px;
 }
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
-  transition: width 0.5s ease;
+  background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+  transition: width 0.3s ease;
 }
 
 .progress-text {
-  text-align: center;
   font-weight: 600;
-  color: #4f46e5;
-  margin-bottom: 16px;
-}
-
-.time-indicator {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-  color: #666;
-}
-
-.morning {
-  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-}
-
-.afternoon {
-  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-}
-
-.evening {
-  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-}
-
-.night {
-  background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+  color: #000000;
+  min-width: 40px;
 }
 </style>

@@ -41,7 +41,6 @@
             :key="action.id"
             @click="handleQuickAction(action.id)"
             class="quick-action-btn"
-            :class="action.color"
           >
             <div class="action-icon">{{ action.icon }}</div>
             <div class="action-content">
@@ -68,7 +67,7 @@
       </div>
       <div class="section-content">
         <div class="stats-grid">
-          <div v-for="stat in statistics" :key="stat.id" class="stat-card" :class="stat.type">
+          <div v-for="stat in statistics" :key="stat.id" class="stat-card">
             <div class="stat-header">
               <div class="stat-icon">{{ stat.icon }}</div>
               <div class="stat-trend" :class="stat.trend">
@@ -80,6 +79,10 @@
               <div class="stat-number">{{ formatNumber(stat.value) }}</div>
               <div class="stat-label">{{ stat.label }}</div>
               <div class="stat-description">{{ stat.description }}</div>
+              <div class="stat-extra">
+                <span class="extra-label">Từ {{ selectedPeriod === 'today' ? 'hôm qua' : selectedPeriod === 'week' ? 'tuần trước' : 'tháng trước' }}:</span>
+                <span class="extra-value">{{ stat.previousValue }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -111,7 +114,10 @@
             <div class="activity-content">
               <div class="activity-title">{{ activity.title }}</div>
               <div class="activity-description">{{ activity.description }}</div>
-              <div class="activity-time">{{ formatTime(activity.timestamp) }}</div>
+              <div class="activity-meta">
+                <span class="activity-time">{{ formatTime(activity.timestamp) }}</span>
+                <span class="activity-location">{{ activity.location }}</span>
+              </div>
             </div>
             <div class="activity-status" :class="activity.status">
               {{ getStatusText(activity.status) }}
@@ -142,14 +148,22 @@
       </div>
       <div class="section-content">
         <div class="chart-container">
-          <div class="chart-placeholder">
-            <div class="chart-icon">📈</div>
-            <div class="chart-text">
-              <div class="chart-title">{{ getChartTitle() }}</div>
-              <div class="chart-subtitle">Dữ liệu {{ selectedPeriod === 'today' ? 'hôm nay' : selectedPeriod === 'week' ? 'tuần này' : 'tháng này' }}</div>
+          <div class="chart-info">
+            <div class="chart-summary">
+              <div class="summary-item">
+                <div class="summary-label">Tổng cộng</div>
+                <div class="summary-value">{{ chartData.reduce((a, b) => a + b, 0) }}</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">Trung bình</div>
+                <div class="summary-value">{{ Math.round(chartData.reduce((a, b) => a + b, 0) / chartData.length) }}</div>
+              </div>
+              <div class="summary-item">
+                <div class="summary-label">Cao nhất</div>
+                <div class="summary-value">{{ Math.max(...chartData) }}</div>
+              </div>
             </div>
           </div>
-          <!-- Simulated chart bars -->
           <div class="chart-bars">
             <div 
               v-for="(value, index) in chartData" 
@@ -158,6 +172,7 @@
               :style="{ height: (value / Math.max(...chartData)) * 100 + '%' }"
             >
               <div class="bar-value">{{ value }}</div>
+              <div class="bar-label">{{ getBarLabel(index) }}</div>
             </div>
           </div>
         </div>
@@ -171,12 +186,18 @@
           <span class="section-icon">⚙️</span>
           Trạng thái hệ thống
         </h2>
+        <div class="system-summary">
+          <span class="summary-text">{{ onlineServices }}/{{ systemServices.length }} dịch vụ hoạt động</span>
+        </div>
       </div>
       <div class="section-content">
         <div class="system-status-grid">
           <div v-for="service in systemServices" :key="service.id" class="service-card">
             <div class="service-header">
-              <div class="service-name">{{ service.name }}</div>
+              <div class="service-info">
+                <div class="service-name">{{ service.name }}</div>
+                <div class="service-description">{{ service.description }}</div>
+              </div>
               <div class="service-status" :class="service.status">
                 <div class="status-dot"></div>
                 {{ getServiceStatusText(service.status) }}
@@ -190,6 +211,46 @@
               <div class="metric">
                 <span class="metric-label">Response:</span>
                 <span class="metric-value">{{ service.responseTime }}ms</span>
+              </div>
+              <div class="metric">
+                <span class="metric-label">Last Check:</span>
+                <span class="metric-value">{{ service.lastCheck }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage Statistics -->
+    <div class="section-card">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="section-icon">💾</span>
+          Thống kê sử dụng
+        </h2>
+      </div>
+      <div class="section-content">
+        <div class="usage-grid">
+          <div v-for="usage in usageStats" :key="usage.id" class="usage-card">
+            <div class="usage-header">
+              <div class="usage-icon">{{ usage.icon }}</div>
+              <div class="usage-title">{{ usage.title }}</div>
+            </div>
+            <div class="usage-progress">
+              <div class="progress-bar">
+                <div class="progress-fill" :style="{ width: usage.percentage + '%' }"></div>
+              </div>
+              <div class="progress-text">{{ usage.used }} / {{ usage.total }} ({{ usage.percentage }}%)</div>
+            </div>
+            <div class="usage-details">
+              <div class="detail-item">
+                <span>Còn lại:</span>
+                <span>{{ usage.remaining }}</span>
+              </div>
+              <div class="detail-item">
+                <span>Ước tính hết:</span>
+                <span>{{ usage.estimatedEnd }}</span>
               </div>
             </div>
           </div>
@@ -211,29 +272,25 @@ export default {
           id: 'new-task',
           icon: '➕',
           title: 'Tạo Task mới',
-          description: 'Thêm công việc mới',
-          color: 'primary'
+          description: 'Thêm công việc mới'
         },
         {
           id: 'tts-convert',
           icon: '🎵',
           title: 'TTS Convert',
-          description: 'Chuyển đổi text to speech',
-          color: 'success'
+          description: 'Chuyển đổi text to speech'
         },
         {
           id: 'translate',
           icon: '🌐',
           title: 'Dịch phụ đề',
-          description: 'Dịch subtitle nhanh',
-          color: 'info'
+          description: 'Dịch subtitle nhanh'
         },
         {
           id: 'generate-prompt',
           icon: '🎨',
           title: 'Tạo Prompt',
-          description: 'Generate image prompt',
-          color: 'warning'
+          description: 'Generate image prompt'
         }
       ],
       statistics: [
@@ -242,9 +299,9 @@ export default {
           icon: '📋',
           label: 'Tổng Tasks',
           value: 156,
+          previousValue: 139,
           change: 12,
           trend: 'up',
-          type: 'primary',
           description: 'Tasks đã tạo'
         },
         {
@@ -252,9 +309,9 @@ export default {
           icon: '✅',
           label: 'Hoàn thành',
           value: 89,
+          previousValue: 82,
           change: 8,
           trend: 'up',
-          type: 'success',
           description: 'Tasks đã xong'
         },
         {
@@ -262,9 +319,9 @@ export default {
           icon: '🎵',
           label: 'TTS Generated',
           value: 234,
+          previousValue: 241,
           change: -3,
           trend: 'down',
-          type: 'info',
           description: 'Audio files'
         },
         {
@@ -272,9 +329,9 @@ export default {
           icon: '🎨',
           label: 'Prompts tạo',
           value: 67,
+          previousValue: 58,
           change: 15,
           trend: 'up',
-          type: 'warning',
           description: 'Image prompts'
         }
       ],
@@ -285,15 +342,17 @@ export default {
           title: 'Hoàn thành task "Build kênh giải đoán"',
           description: 'Task đã được đánh dấu hoàn thành',
           timestamp: new Date(Date.now() - 1000 * 60 * 15),
-          status: 'success'
+          status: 'success',
+          location: 'Task Manager'
         },
         {
           id: 2,
           type: 'tts',
           title: 'TTS conversion completed',
-          description: 'Đã chuyển đổi 15 audio files',
+          description: 'Đã chuyển đổi 15 audio files thành công',
           timestamp: new Date(Date.now() - 1000 * 60 * 30),
-          status: 'success'
+          status: 'success',
+          location: 'TTS Module'
         },
         {
           id: 3,
@@ -301,7 +360,8 @@ export default {
           title: 'Subtitle translation',
           description: 'Dịch 327 phụ đề từ Tiếng Trung sang Tiếng Việt',
           timestamp: new Date(Date.now() - 1000 * 60 * 45),
-          status: 'processing'
+          status: 'processing',
+          location: 'Translator'
         },
         {
           id: 4,
@@ -309,7 +369,8 @@ export default {
           title: 'Generated image prompts',
           description: 'Tạo 5 prompts cho nội dung mới',
           timestamp: new Date(Date.now() - 1000 * 60 * 60),
-          status: 'success'
+          status: 'success',
+          location: 'Prompt Generator'
         }
       ],
       chartTypes: [
@@ -323,30 +384,70 @@ export default {
         {
           id: 'api-chatgpt',
           name: 'ChatGPT API',
+          description: 'AI text generation service',
           status: 'online',
           uptime: '99.9%',
-          responseTime: 245
+          responseTime: 245,
+          lastCheck: '2 phút trước'
         },
         {
           id: 'api-elevenlabs',
           name: 'ElevenLabs API',
+          description: 'Text-to-speech service',
           status: 'online',
           uptime: '98.7%',
-          responseTime: 189
+          responseTime: 189,
+          lastCheck: '1 phút trước'
         },
         {
           id: 'storage',
           name: 'File Storage',
+          description: 'Local file management',
           status: 'online',
           uptime: '100%',
-          responseTime: 56
+          responseTime: 56,
+          lastCheck: '30 giây trước'
         },
         {
           id: 'database',
           name: 'Local Database',
+          description: 'Data persistence layer',
           status: 'warning',
           uptime: '95.2%',
-          responseTime: 423
+          responseTime: 423,
+          lastCheck: '5 phút trước'
+        }
+      ],
+      usageStats: [
+        {
+          id: 'storage',
+          icon: '💾',
+          title: 'Dung lượng lưu trữ',
+          used: '45.2 GB',
+          total: '100 GB',
+          remaining: '54.8 GB',
+          percentage: 45,
+          estimatedEnd: '3 tháng'
+        },
+        {
+          id: 'api-calls',
+          icon: '🔌',
+          title: 'API Calls (tháng này)',
+          used: '2,340',
+          total: '10,000',
+          remaining: '7,660',
+          percentage: 23,
+          estimatedEnd: '25 ngày'
+        },
+        {
+          id: 'bandwidth',
+          icon: '🌐',
+          title: 'Băng thông',
+          used: '12.5 GB',
+          total: '50 GB',
+          remaining: '37.5 GB',
+          percentage: 25,
+          estimatedEnd: '20 ngày'
         }
       ]
     }
@@ -371,6 +472,9 @@ export default {
     },
     completionRate() {
       return 78 // Mock data
+    },
+    onlineServices() {
+      return this.systemServices.filter(service => service.status === 'online').length
     }
   },
   methods: {
@@ -416,14 +520,9 @@ export default {
       }
       return texts[status] || 'Không rõ'
     },
-    getChartTitle() {
-      const titles = {
-        tasks: 'Thống kê Tasks',
-        tts: 'TTS Conversions',
-        translations: 'Dịch thuật',
-        prompts: 'Image Prompts'
-      }
-      return titles[this.selectedChartType] || 'Biểu đồ'
+    getBarLabel(index) {
+      const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+      return days[index] || `Ngày ${index + 1}`
     },
     formatNumber(num) {
       if (num >= 1000) {
@@ -457,19 +556,21 @@ export default {
 .dashboard-container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 24px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
+  background: #f8f9fa;
+  min-height: 100vh;
 }
 
 /* Welcome Section */
 .welcome-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 16px;
-  padding: 32px;
-  color: white;
-  margin-bottom: 8px;
+  background: #ffffff;
+  border: 1px solid #e1e5e9;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
 }
 
 .welcome-content {
@@ -477,34 +578,35 @@ export default {
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 24px;
+  gap: 20px;
 }
 
 .welcome-title {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0 0 8px 0;
+  color: #1a1a1a;
 }
 
 .welcome-subtitle {
   font-size: 16px;
   margin: 0;
-  opacity: 0.9;
+  color: #666666;
 }
 
 .welcome-stats {
   display: flex;
-  gap: 24px;
+  gap: 20px;
 }
 
 .quick-stat {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255, 255, 255, 0.1);
+  background: #f8f9fa;
   padding: 16px;
-  border-radius: 12px;
-  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  border: 1px solid #e1e5e9;
 }
 
 .stat-icon {
@@ -512,20 +614,21 @@ export default {
 }
 
 .stat-number {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 700;
   margin: 0;
+  color: #1a1a1a;
 }
 
 .stat-label {
   font-size: 12px;
-  opacity: 0.8;
+  color: #666666;
   margin: 0;
 }
 
 /* Section Card */
 .section-card {
-  background: white;
+  background: #ffffff;
   border: 1px solid #e1e5e9;
   border-radius: 12px;
   overflow: hidden;
@@ -534,7 +637,7 @@ export default {
 
 .section-header {
   background: #f8f9fa;
-  padding: 20px 24px;
+  padding: 16px 20px;
   border-bottom: 1px solid #e1e5e9;
   display: flex;
   justify-content: space-between;
@@ -542,26 +645,27 @@ export default {
 }
 
 .section-title {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+  color: #1a1a1a;
 }
 
 .section-icon {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .section-content {
-  padding: 24px;
+  padding: 20px;
 }
 
 /* Quick Actions */
 .quick-actions-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 16px;
 }
 
@@ -569,90 +673,49 @@ export default {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px;
-  border: 2px solid transparent;
-  border-radius: 12px;
-  background: #f8f9fa;
+  padding: 16px;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  background: #ffffff;
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
 }
 
 .quick-action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-.quick-action-btn.primary {
-  border-color: #3b82f6;
-  background: linear-gradient(135deg, #dbeafe 0%, #f0f9ff 100%);
-}
-
-.quick-action-btn.success {
-  border-color: #10b981;
-  background: linear-gradient(135deg, #d1fae5 0%, #f0fdf4 100%);
-}
-
-.quick-action-btn.info {
-  border-color: #06b6d4;
-  background: linear-gradient(135deg, #cffafe 0%, #f0fdfa 100%);
-}
-
-.quick-action-btn.warning {
-  border-color: #f59e0b;
-  background: linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%);
+  border-color: #1a1a1a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .action-icon {
-  font-size: 32px;
+  font-size: 24px;
   flex-shrink: 0;
 }
 
 .action-title {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   margin-bottom: 4px;
+  color: #1a1a1a;
 }
 
 .action-description {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 12px;
+  color: #666666;
 }
 
 /* Statistics Grid */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
 }
 
 .stat-card {
   background: #f8f9fa;
   border: 1px solid #e1e5e9;
-  border-radius: 12px;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-}
-
-.stat-card.primary {
-  border-left: 4px solid #3b82f6;
-  background: linear-gradient(135deg, #dbeafe 0%, white 100%);
-}
-
-.stat-card.success {
-  border-left: 4px solid #10b981;
-  background: linear-gradient(135deg, #d1fae5 0%, white 100%);
-}
-
-.stat-card.info {
-  border-left: 4px solid #06b6d4;
-  background: linear-gradient(135deg, #cffafe 0%, white 100%);
-}
-
-.stat-card.warning {
-  border-left: 4px solid #f59e0b;
-  background: linear-gradient(135deg, #fef3c7 0%, white 100%);
+  border-radius: 8px;
+  padding: 16px;
 }
 
 .stat-header {
@@ -662,37 +725,63 @@ export default {
   margin-bottom: 12px;
 }
 
+.stat-icon {
+  font-size: 20px;
+}
+
 .stat-trend.up {
   color: #10b981;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .stat-trend.down {
   color: #ef4444;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .stat-number {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 700;
   margin-bottom: 4px;
+  color: #1a1a1a;
 }
 
 .stat-label {
   font-size: 14px;
   font-weight: 600;
-  color: #374151;
+  color: #1a1a1a;
   margin-bottom: 4px;
 }
 
 .stat-description {
   font-size: 12px;
-  color: #6b7280;
+  color: #666666;
+  margin-bottom: 8px;
+}
+
+.stat-extra {
+  font-size: 11px;
+  color: #666666;
+  display: flex;
+  justify-content: space-between;
+}
+
+.extra-label {
+  color: #999999;
+}
+
+.extra-value {
+  font-weight: 500;
+  color: #1a1a1a;
 }
 
 /* Activities */
 .activities-list {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .activity-item {
@@ -702,34 +791,19 @@ export default {
   padding: 16px;
   background: #f8f9fa;
   border-radius: 8px;
-  border-left: 4px solid #e1e5e9;
+  border: 1px solid #e1e5e9;
 }
 
 .activity-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   background: #e1e5e9;
-}
-
-.activity-icon.task {
-  background: #dbeafe;
-}
-
-.activity-icon.tts {
-  background: #d1fae5;
-}
-
-.activity-icon.translate {
-  background: #cffafe;
-}
-
-.activity-icon.prompt {
-  background: #fef3c7;
+  flex-shrink: 0;
 }
 
 .activity-content {
@@ -739,24 +813,29 @@ export default {
 .activity-title {
   font-weight: 600;
   margin-bottom: 4px;
+  color: #1a1a1a;
+  font-size: 14px;
 }
 
 .activity-description {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 4px;
+  font-size: 12px;
+  color: #666666;
+  margin-bottom: 6px;
 }
 
-.activity-time {
-  font-size: 12px;
-  color: #9ca3af;
+.activity-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: #999999;
 }
 
 .activity-status {
-  padding: 4px 12px;
-  border-radius: 16px;
-  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
   font-weight: 500;
+  flex-shrink: 0;
 }
 
 .activity-status.success {
@@ -771,36 +850,36 @@ export default {
 
 /* Chart */
 .chart-container {
-  position: relative;
-  height: 300px;
   background: #f8f9fa;
   border-radius: 8px;
+  padding: 20px;
+  border: 1px solid #e1e5e9;
+}
+
+.chart-info {
+  margin-bottom: 20px;
+}
+
+.chart-summary {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  gap: 20px;
+  margin-bottom: 16px;
 }
 
-.chart-placeholder {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+.summary-item {
+  text-align: center;
 }
 
-.chart-icon {
-  font-size: 48px;
-  opacity: 0.5;
+.summary-label {
+  font-size: 12px;
+  color: #666666;
+  margin-bottom: 4px;
 }
 
-.chart-title {
-  font-size: 18px;
+.summary-value {
+  font-size: 16px;
   font-weight: 600;
-}
-
-.chart-subtitle {
-  font-size: 14px;
-  color: #6b7280;
+  color: #1a1a1a;
 }
 
 .chart-bars {
@@ -808,27 +887,41 @@ export default {
   align-items: end;
   gap: 8px;
   height: 120px;
+  justify-content: center;
 }
 
 .chart-bar {
-  width: 24px;
-  background: linear-gradient(to top, #3b82f6, #60a5fa);
+  width: 32px;
+  background: #1a1a1a;
   border-radius: 4px 4px 0 0;
   position: relative;
   min-height: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .bar-value {
   position: absolute;
   top: -20px;
-  left: 50%;
-  transform: translateX(-50%);
   font-size: 10px;
   font-weight: 600;
-  color: #374151;
+  color: #1a1a1a;
+}
+
+.bar-label {
+  position: absolute;
+  bottom: -20px;
+  font-size: 10px;
+  color: #666666;
 }
 
 /* System Status */
+.system-summary {
+  font-size: 12px;
+  color: #666666;
+}
+
 .system-status-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -845,19 +938,27 @@ export default {
 .service-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 12px;
 }
 
 .service-name {
   font-weight: 600;
+  color: #1a1a1a;
+  font-size: 14px;
+}
+
+.service-description {
+  font-size: 11px;
+  color: #666666;
+  margin-top: 2px;
 }
 
 .service-status {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
 }
 
@@ -874,8 +975,8 @@ export default {
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
 }
@@ -889,45 +990,123 @@ export default {
 .metric {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .metric-label {
-  color: #6b7280;
+  color: #666666;
 }
 
 .metric-value {
   font-weight: 500;
+  color: #1a1a1a;
+}
+
+/* Usage Statistics */
+.usage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.usage-card {
+  background: #f8f9fa;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.usage-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.usage-icon {
+  font-size: 20px;
+}
+
+.usage-title {
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 14px;
+}
+
+.usage-progress {
+  margin-bottom: 12px;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e1e5e9;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #1a1a1a;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  font-size: 12px;
+  color: #666666;
+  text-align: center;
+}
+
+.usage-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #666666;
+}
+
+.detail-item span:last-child {
+  font-weight: 500;
+  color: #1a1a1a;
 }
 
 /* Controls */
 .period-select {
   padding: 6px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e1e5e9;
   border-radius: 6px;
-  font-size: 14px;
-  background: white;
+  font-size: 12px;
+  background: #ffffff;
+  color: #1a1a1a;
 }
 
 .chart-controls {
   display: flex;
-  gap: 8px;
+  gap: 4px;
 }
 
 .chart-type-btn {
   padding: 6px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e1e5e9;
   border-radius: 6px;
-  background: white;
-  font-size: 12px;
+  background: #ffffff;
+  font-size: 11px;
   cursor: pointer;
   transition: all 0.2s;
+  color: #666666;
 }
 
 .chart-type-btn.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
+  background: #1a1a1a;
+  color: #ffffff;
+  border-color: #1a1a1a;
 }
 
 .refresh-btn {
@@ -935,20 +1114,22 @@ export default {
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #e1e5e9;
   border-radius: 6px;
-  background: white;
+  background: #ffffff;
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  color: #666666;
 }
 
 .refresh-btn:hover {
-  background: #f3f4f6;
+  border-color: #1a1a1a;
+  color: #1a1a1a;
 }
 
 .refresh-icon {
-  font-size: 14px;
+  font-size: 12px;
 }
 
 /* Responsive */
@@ -979,6 +1160,14 @@ export default {
   .system-status-grid {
     grid-template-columns: 1fr;
   }
+
+  .usage-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-summary {
+    justify-content: space-around;
+  }
 }
 
 @media (max-width: 480px) {
@@ -993,6 +1182,11 @@ export default {
 
   .quick-stat {
     width: 100%;
+  }
+
+  .chart-summary {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 </style>

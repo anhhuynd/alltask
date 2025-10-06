@@ -1,83 +1,74 @@
 <template>
-  <div class="task-card">
-    <div class="task-item" :class="{ overdue: isOverdue(task) }">
-      <div 
-        class="task-checkbox"
-        :class="{ completed: task.completed }"
-        @click="$emit('toggle-task', task.id)"
-      ></div>
-      
-      <div class="task-content" @click="$emit('edit-task', task)">
-        <div 
-          class="task-title"
-          :class="{ completed: task.completed }"
+  <div 
+    :class="['task-item', { 
+      completed: task.completed, 
+      overdue: isOverdue(task),
+      expanded: expandedTasks.includes(task.id)
+    }]"
+  >
+    <div class="task-header" @click="toggleTaskExpansion(task.id)">
+      <div class="task-left">
+        <input 
+          type="checkbox" 
+          :checked="task.completed"
+          @click.stop="toggleTask(task.id)"
+          class="task-checkbox"
         >
-          {{ task.title }}
-          <button 
-            v-if="subTasks.length > 0"
-            @click.stop="toggleExpansion"
-            class="expand-btn"
-            :class="{ expanded: isExpanded }"
-          >
-            {{ isExpanded ? '▼' : '▶' }}
-          </button>
-        </div>
-        <div class="task-description">{{ task.description }}</div>
-        <div class="task-meta">
-          <span class="task-time">{{ task.time }}</span>
-          <span v-if="task.priority" :class="['task-priority', task.priority]">
-            {{ getPriorityText(task.priority) }}
-          </span>
-          <span v-if="subTasks.length > 0" class="subtask-count">
-            {{ completedSubTasksCount }}/{{ subTasks.length }} subtasks
-          </span>
+        <div class="task-info">
+          <h4 class="task-title">{{ task.title }}</h4>
+          <div class="task-meta">
+            <span v-if="task.time" class="task-time">⏰ {{ task.time }}</span>
+            <span v-if="task.priority" :class="['task-priority', `priority-${task.priority}`]">
+              {{ getPriorityText(task.priority) }}
+            </span>
+            <span v-if="subTasks.length > 0" class="subtask-count">
+              📋 {{ getCompletedSubTasksCount(task.id) }}/{{ subTasks.length }} subtasks
+            </span>
+          </div>
+          <p v-if="task.description" class="task-description">{{ task.description }}</p>
         </div>
       </div>
-      
-      <div class="task-controls">
-        <button class="control-btn" @click="$emit('add-subtask', task.id)" title="Thêm subtask">
-          ➕
-        </button>
-        <button class="control-btn" @click="$emit('copy-task', task)" title="Copy task">
+      <div class="task-actions">
+        <button @click.stop="$emit('copy-task', task)" class="action-btn copy-btn" title="Copy task">
           📋
         </button>
-        <button class="control-btn" @click="$emit('edit-task', task)" title="Sửa">
+        <button @click.stop="$emit('edit-task', task)" class="action-btn edit-btn" title="Sửa">
           ✏️
         </button>
-        <button class="control-btn delete" @click="$emit('delete-task', task.id)" title="Xóa">
+        <button @click.stop="$emit('add-subtask', task.id)" class="action-btn add-btn" title="Thêm subtask">
+          ➕
+        </button>
+        <button @click.stop="$emit('delete-task', task.id)" class="action-btn delete-btn" title="Xóa">
           🗑️
+        </button>
+        <button class="expand-btn" title="Mở rộng">
+          {{ expandedTasks.includes(task.id) ? '▼' : '▶' }}
         </button>
       </div>
     </div>
-
-    <!-- Sub Tasks -->
-    <div v-if="isExpanded && subTasks.length > 0" class="sub-tasks">
+    
+    <!-- Subtasks -->
+    <div v-if="expandedTasks.includes(task.id) && subTasks.length > 0" class="subtasks">
       <div 
-        v-for="subTask in subTasks" 
-        :key="subTask.id"
-        class="task-item sub-task"
+        v-for="subtask in subTasks" 
+        :key="subtask.id"
+        :class="['subtask-item', { completed: subtask.completed }]"
       >
-        <div 
-          class="task-checkbox"
-          :class="{ completed: subTask.completed }"
-          @click="$emit('toggle-task', subTask.id)"
-        ></div>
-        
-        <div class="task-content">
-          <div 
-            class="task-title"
-            :class="{ completed: subTask.completed }"
-          >
-            {{ subTask.title }}
-          </div>
-          <div class="task-description">{{ subTask.description }}</div>
-          <div class="task-meta">
-            <span class="task-time">{{ subTask.time }}</span>
-          </div>
+        <input 
+          type="checkbox" 
+          :checked="subtask.completed"
+          @change="$emit('toggle-task', subtask.id)"
+          class="subtask-checkbox"
+        >
+        <div class="subtask-info">
+          <h5 class="subtask-title">{{ subtask.title }}</h5>
+          <p v-if="subtask.description" class="subtask-description">{{ subtask.description }}</p>
         </div>
-        
-        <div class="task-controls">
-          <button class="control-btn delete" @click="$emit('delete-task', subTask.id)" title="Xóa">
+        <div class="subtask-actions">
+          <button @click="$emit('edit-task', subtask)" class="action-btn edit-btn" title="Sửa">
+            ✏️
+          </button>
+          <button @click="$emit('delete-task', subtask.id)" class="action-btn delete-btn" title="Xóa">
             🗑️
           </button>
         </div>
@@ -104,18 +95,13 @@ export default {
     }
   },
   emits: ['toggle-task', 'edit-task', 'add-subtask', 'copy-task', 'delete-task', 'toggle-expansion'],
-  computed: {
-    isExpanded() {
-      return this.expandedTasks.includes(this.task.id)
+  methods: {
+    toggleTaskExpansion(taskId) {
+      this.$emit('toggle-expansion', taskId)
     },
     
-    completedSubTasksCount() {
-      return this.subTasks.filter(task => task.completed).length
-    }
-  },
-  methods: {
-    toggleExpansion() {
-      this.$emit('toggle-expansion', this.task.id)
+    toggleTask(taskId) {
+      this.$emit('toggle-task', taskId)
     },
     
     isOverdue(task) {
@@ -142,183 +128,217 @@ export default {
         low: 'Thấp'
       }
       return priorities[priority] || ''
+    },
+    
+    getCompletedSubTasksCount(parentId) {
+      return this.subTasks.filter(task => task.completed).length
     }
   }
 }
 </script>
 
 <style scoped>
-.task-card {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  overflow: hidden;
-  transition: all 0.3s ease;
-}
-
-.task-card:hover {
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
-
 .task-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 16px 20px;
-  background: white;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  background: #ffffff;
+  transition: all 0.2s ease;
+  overflow: hidden;
+}
+
+.task-item:hover {
+  border-color: #cccccc;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.task-item.completed {
+  border-color: #28a745;
+  background: #f8fff9;
 }
 
 .task-item.overdue {
-  border-left: 4px solid #ef4444;
-  background: #fef2f2;
+  border-color: #dc3545;
+  background: #fff5f5;
 }
 
-.task-item.sub-task {
-  background: #f9fafb;
-  border-left: 3px solid #d1d5db;
-  margin-left: 20px;
+.task-header {
+  display: flex;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+}
+
+.task-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
 }
 
 .task-checkbox {
-  width: 20px;
-  height: 20px;
-  border: 2px solid #d1d5db;
-  border-radius: 4px;
+  margin-top: 4px;
+  width: 18px;
+  height: 18px;
   cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
 }
 
-.task-checkbox.completed {
-  background: #10b981;
-  border-color: #10b981;
-}
-
-.task-checkbox.completed::after {
-  content: '✓';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-  font-weight: bold;
-}
-
-.task-content {
+.task-info {
   flex: 1;
-  cursor: pointer;
 }
 
 .task-title {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
   font-weight: 600;
-  color: #374151;
-  margin-bottom: 4px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  color: #000000;
 }
 
-.task-title.completed {
+.task-item.completed .task-title {
   text-decoration: line-through;
-  opacity: 0.6;
-}
-
-.expand-btn {
-  background: none;
-  border: none;
-  font-size: 12px;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 2px;
-  transition: all 0.2s ease;
-}
-
-.expand-btn:hover {
-  background: #f3f4f6;
-}
-
-.expand-btn.expanded {
-  transform: rotate(90deg);
-}
-
-.task-description {
-  font-size: 0.9rem;
-  color: #6b7280;
-  margin-bottom: 8px;
+  color: #666666;
 }
 
 .task-meta {
   display: flex;
   gap: 12px;
-  font-size: 0.8rem;
-  color: #9ca3af;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .task-time {
-  font-weight: 500;
+  font-size: 0.9rem;
+  color: #666666;
 }
 
 .task-priority {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
-  font-size: 0.75rem;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
 }
 
-.task-priority.high {
-  background: #fee2e2;
-  color: #dc2626;
+.task-priority.priority-high {
+  background: #dc3545;
+  color: #ffffff;
 }
 
-.task-priority.medium {
-  background: #fef3c7;
-  color: #d97706;
+.task-priority.priority-medium {
+  background: #ffc107;
+  color: #000000;
 }
 
-.task-priority.low {
-  background: #dcfce7;
-  color: #16a34a;
+.task-priority.priority-low {
+  background: #28a745;
+  color: #ffffff;
 }
 
 .subtask-count {
-  background: #f3f4f6;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 500;
+  font-size: 0.9rem;
+  color: #666666;
 }
 
-.task-controls {
+.task-description {
+  margin: 0;
+  color: #666666;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.task-actions {
   display: flex;
   gap: 8px;
-}
-
-.control-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 6px;
-  background: #f3f4f6;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 14px;
 }
 
-.control-btn:hover {
-  background: #e5e7eb;
-  transform: scale(1.05);
+.action-btn {
+  padding: 6px 8px;
+  border: none;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
 }
 
-.control-btn.delete:hover {
-  background: #fee2e2;
-  color: #dc2626;
+.action-btn:hover {
+  background: #e5e5e5;
 }
 
-.sub-tasks {
-  border-top: 1px solid #e5e7eb;
+.copy-btn:hover {
+  background: #e3f2fd;
+}
+
+.edit-btn:hover {
+  background: #fff3e0;
+}
+
+.add-btn:hover {
+  background: #e8f5e8;
+}
+
+.delete-btn:hover {
+  background: #ffebee;
+}
+
+.expand-btn {
+  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #666666;
+  font-size: 0.8rem;
+}
+
+/* Subtasks */
+.subtasks {
+  border-top: 1px solid #e5e5e5;
+  padding: 16px;
+  background: #f8f9fa;
+}
+
+.subtask-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.subtask-item:last-child {
+  border-bottom: none;
+}
+
+.subtask-checkbox {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.subtask-info {
+  flex: 1;
+}
+
+.subtask-title {
+  margin: 0 0 4px 0;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #000000;
+}
+
+.subtask-item.completed .subtask-title {
+  text-decoration: line-through;
+  color: #666666;
+}
+
+.subtask-description {
+  margin: 0;
+  color: #666666;
+  font-size: 0.9rem;
+}
+
+.subtask-actions {
+  display: flex;
+  gap: 4px;
 }
 </style>

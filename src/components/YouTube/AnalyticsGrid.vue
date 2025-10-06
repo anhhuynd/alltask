@@ -1,123 +1,123 @@
 <template>
-  <div>
-    <!-- Performance Alerts -->
-    <div v-if="performanceAlerts.length > 0" class="alerts-section">
-      <h4>⚠️ Cảnh Báo Hiệu Suất</h4>
-      <div class="alerts-list">
-        <div v-for="alert in performanceAlerts" :key="alert.id" :class="['alert-item', alert.type]">
-          <div class="alert-icon">{{ alert.icon }}</div>
-          <div class="alert-content">
-            <div class="alert-title">{{ alert.title }}</div>
-            <div class="alert-description">{{ alert.description }}</div>
+  <div class="analytics-grid">
+    <!-- Performance Summary -->
+    <div class="analytics-section">
+      <h4>📊 Tổng quan hiệu suất</h4>
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-icon">👀</div>
+          <div class="summary-info">
+            <div class="summary-value">{{ formatViews(totalViews) }}</div>
+            <div class="summary-label">Tổng lượt xem</div>
+            <div class="summary-change" :class="totalViewsGrowth >= 0 ? 'positive' : 'negative'">
+              {{ totalViewsGrowth >= 0 ? '+' : '' }}{{ totalViewsGrowth }}%
+            </div>
           </div>
-          <div class="alert-actions">
-            <button @click="$emit('view-alert', alert)" class="alert-btn">Xem chi tiết</button>
+        </div>
+        
+        <div class="summary-card">
+          <div class="summary-icon">📈</div>
+          <div class="summary-info">
+            <div class="summary-value">{{ channelPerformanceScore }}/10</div>
+            <div class="summary-label">Điểm hiệu suất kênh</div>
+          </div>
+        </div>
+        
+        <div class="summary-card">
+          <div class="summary-icon">📅</div>
+          <div class="summary-info">
+            <div class="summary-value">{{ uploadFrequencyScore }}/10</div>
+            <div class="summary-label">Tần suất đăng video</div>
+          </div>
+        </div>
+        
+        <div class="summary-card">
+          <div class="summary-icon">⭐</div>
+          <div class="summary-info">
+            <div class="summary-value">{{ contentQualityScore }}/10</div>
+            <div class="summary-label">Chất lượng nội dung</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Advanced Analytics -->
-    <div class="analytics-grid">
-      <div class="analytics-card">
-        <div class="analytics-header">
-          <h4>📈 Tăng Trưởng Views</h4>
+    <!-- Performance Alerts -->
+    <div v-if="performanceAlerts.length > 0" class="analytics-section">
+      <h4>⚠️ Cảnh báo hiệu suất</h4>
+      <div class="alerts-list">
+        <div 
+          v-for="alert in performanceAlerts" 
+          :key="alert.id"
+          :class="['alert-card', `alert-${alert.type}`]"
+          @click="$emit('view-alert', alert)"
+        >
+          <div class="alert-icon">{{ alert.icon }}</div>
+          <div class="alert-content">
+            <div class="alert-title">{{ alert.title }}</div>
+            <div class="alert-description">{{ alert.description }}</div>
+          </div>
+          <div class="alert-action">▶</div>
         </div>
-        <div class="analytics-content">
-          <div class="analytics-number">{{ totalViewsGrowth }}%</div>
-          <div class="analytics-description">So với tuần trước</div>
-          <div class="analytics-trend">
-            <span :class="['trend-indicator', totalViewsGrowth > 0 ? 'positive' : 'negative']">
-              {{ totalViewsGrowth > 0 ? '↗️' : '↘️' }} {{ Math.abs(totalViewsGrowth) }}%
-            </span>
+      </div>
+    </div>
+
+    <!-- Top Performing Video -->
+    <div v-if="topPerformingVideo" class="analytics-section">
+      <h4>🏆 Video hiệu suất cao nhất</h4>
+      <div class="top-video-card">
+        <div class="video-thumbnail">
+          <img v-if="topPerformingVideo.thumbnail" :src="topPerformingVideo.thumbnail" :alt="topPerformingVideo.title" />
+          <div v-else class="placeholder-thumbnail">
+            {{ topPerformingVideo.isShort ? '📱' : '🎥' }}
+          </div>
+        </div>
+        <div class="video-info">
+          <h5 class="video-title">{{ topPerformingVideo.title }}</h5>
+          <div class="video-stats">
+            <span class="stat-item">👀 {{ formatViews(topPerformingVideo.views) }}</span>
+            <span class="stat-item">📈 {{ topPerformingVideo.viewGrowth >= 0 ? '+' : '' }}{{ topPerformingVideo.viewGrowth }}%</span>
+            <span class="stat-item">{{ topPerformingVideo.isShort ? '📱 Shorts' : '🎥 Video' }}</span>
           </div>
         </div>
       </div>
+    </div>
 
-      <div class="analytics-card">
-        <div class="analytics-header">
-          <h4>🎯 Hiệu Suất Kênh</h4>
-        </div>
-        <div class="analytics-content">
-          <div class="analytics-number">{{ channelPerformanceScore }}/10</div>
-          <div class="analytics-description">Điểm hiệu suất trung bình</div>
-          <div class="performance-breakdown">
-            <div class="breakdown-item">
-              <span>Tần suất đăng:</span>
-              <span class="breakdown-score">{{ uploadFrequencyScore }}/10</span>
-            </div>
-            <div class="breakdown-item">
-              <span>Chất lượng nội dung:</span>
-              <span class="breakdown-score">{{ contentQualityScore }}/10</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="analytics-card">
-        <div class="analytics-header">
-          <h4>🏆 Top Performer</h4>
-        </div>
-        <div class="analytics-content">
-          <div class="top-performer" v-if="topPerformingVideo">
-            <div class="performer-title">{{ topPerformingVideo.title }}</div>
-            <div class="performer-stats">{{ formatViews(topPerformingVideo.views) }} views</div>
-            <div class="performer-growth">+{{ topPerformingVideo.viewGrowth }}% tăng trưởng</div>
-          </div>
-          <div v-else class="no-data">Chưa có dữ liệu</div>
-        </div>
-      </div>
-
-      <div class="analytics-card">
-        <div class="analytics-header">
-          <h4>📅 Hoạt Động Gần Đây</h4>
-        </div>
-        <div class="analytics-content">
-          <div class="recent-activities">
-            <div v-for="activity in recentActivities" :key="activity.id" class="activity-item">
-              <div class="activity-icon">{{ activity.icon }}</div>
-              <div class="activity-text">{{ activity.text }}</div>
-              <div class="activity-time">{{ activity.time }}</div>
-            </div>
+    <!-- Recent Activities -->
+    <div v-if="recentActivities.length > 0" class="analytics-section">
+      <h4>📋 Hoạt động gần đây</h4>
+      <div class="activities-list">
+        <div v-for="activity in recentActivities" :key="activity.id" class="activity-item">
+          <div class="activity-icon">{{ activity.icon }}</div>
+          <div class="activity-content">
+            <div class="activity-text">{{ activity.text }}</div>
+            <div class="activity-time">{{ activity.time }}</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Channel Comparison -->
-    <div class="comparison-section">
-      <h4>⚖️ So Sánh Kênh</h4>
+    <div v-if="channelComparison.length > 0" class="analytics-section">
+      <h4>📊 So sánh kênh</h4>
       <div class="comparison-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Kênh</th>
-              <th>Số Video</th>
-              <th>Tổng Views</th>
-              <th>Views TB</th>
-              <th>Tăng Trưởng</th>
-              <th>Điểm Hiệu Suất</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="channel in channelComparison" :key="channel.id">
-              <td class="channel-name">{{ channel.name }}</td>
-              <td>{{ channel.videoCount }}</td>
-              <td>{{ formatViews(channel.totalViews) }}</td>
-              <td>{{ formatViews(channel.avgViews) }}</td>
-              <td>
-                <span :class="['growth-indicator', channel.growth > 0 ? 'positive' : 'negative']">
-                  {{ channel.growth > 0 ? '+' : '' }}{{ channel.growth }}%
-                </span>
-              </td>
-              <td>
-                <span :class="['score-badge', getScoreClass(channel.score)]">
-                  {{ channel.score }}/10
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="comparison-header">
+          <div class="comparison-cell">Kênh</div>
+          <div class="comparison-cell">Videos</div>
+          <div class="comparison-cell">Views</div>
+          <div class="comparison-cell">TB Views</div>
+          <div class="comparison-cell">Tăng trưởng</div>
+          <div class="comparison-cell">Điểm</div>
+        </div>
+        <div v-for="channel in channelComparison" :key="channel.id" class="comparison-row">
+          <div class="comparison-cell channel-name">{{ channel.name }}</div>
+          <div class="comparison-cell">{{ channel.videoCount }}</div>
+          <div class="comparison-cell">{{ formatViews(channel.totalViews) }}</div>
+          <div class="comparison-cell">{{ formatViews(channel.avgViews) }}</div>
+          <div class="comparison-cell" :class="channel.growth >= 0 ? 'positive' : 'negative'">
+            {{ channel.growth >= 0 ? '+' : '' }}{{ channel.growth }}%
+          </div>
+          <div class="comparison-cell">{{ channel.score }}/100</div>
+        </div>
       </div>
     </div>
   </div>
@@ -131,21 +131,25 @@ export default {
       type: Array,
       default: () => []
     },
+    totalViews: {
+      type: Number,
+      required: true
+    },
     totalViewsGrowth: {
       type: Number,
-      default: 0
+      required: true
     },
     channelPerformanceScore: {
       type: Number,
-      default: 0
+      required: true
     },
     uploadFrequencyScore: {
       type: Number,
-      default: 0
+      required: true
     },
     contentQualityScore: {
       type: Number,
-      default: 0
+      required: true
     },
     topPerformingVideo: {
       type: Object,
@@ -169,58 +173,122 @@ export default {
         return (views / 1000).toFixed(1) + 'K'
       }
       return views.toString()
-    },
-
-    getScoreClass(score) {
-      if (score >= 8) return 'excellent'
-      if (score >= 6) return 'good'
-      if (score >= 4) return 'average'
-      return 'poor'
     }
   }
 }
 </script>
 
 <style scoped>
-.alerts-section {
-  background: #fef3c7;
-  border: 1px solid #f59e0b;
-  border-radius: 12px;
+.analytics-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.analytics-section {
+  background: #ffffff;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
   padding: 20px;
-  margin-bottom: 30px;
 }
 
-.alerts-section h4 {
+.analytics-section h4 {
   margin: 0 0 16px 0;
-  color: #92400e;
+  color: #000000;
+  font-weight: 700;
 }
 
+/* Summary Grid */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.summary-card {
+  background: #f8f9fa;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.summary-card:hover {
+  border-color: #cccccc;
+  transform: translateY(-1px);
+}
+
+.summary-icon {
+  font-size: 1.8rem;
+}
+
+.summary-info {
+  flex: 1;
+}
+
+.summary-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #000000;
+  margin-bottom: 4px;
+}
+
+.summary-label {
+  font-size: 0.9rem;
+  color: #666666;
+  margin-bottom: 4px;
+}
+
+.summary-change {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.summary-change.positive {
+  color: #28a745;
+}
+
+.summary-change.negative {
+  color: #dc3545;
+}
+
+/* Alerts */
 .alerts-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.alert-item {
-  background: white;
-  border-radius: 8px;
-  padding: 16px;
+.alert-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  border-left: 4px solid #f59e0b;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.alert-item.warning {
-  border-left-color: #f59e0b;
+.alert-card:hover {
+  transform: translateX(4px);
 }
 
-.alert-item.info {
-  border-left-color: #3b82f6;
+.alert-warning {
+  background: #fff3cd;
+  border: 2px solid #ffeaa7;
 }
 
-.alert-item.danger {
-  border-left-color: #ef4444;
+.alert-danger {
+  background: #f8d7da;
+  border: 2px solid #f5c6cb;
+}
+
+.alert-info {
+  background: #d1ecf1;
+  border: 2px solid #bee5eb;
 }
 
 .alert-icon {
@@ -233,144 +301,81 @@ export default {
 
 .alert-title {
   font-weight: 600;
-  color: #374151;
+  color: #000000;
   margin-bottom: 4px;
 }
 
 .alert-description {
-  color: #6b7280;
   font-size: 0.9rem;
+  color: #666666;
   line-height: 1.4;
 }
 
-.alert-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.alert-btn {
-  padding: 6px 12px;
-  background: #4f46e5;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.alert-btn:hover {
-  background: #4338ca;
-}
-
-.analytics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
-}
-
-.analytics-card {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.analytics-header {
-  background: #f9fafb;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.analytics-header h4 {
-  margin: 0;
-  color: #374151;
-  font-size: 1rem;
-}
-
-.analytics-content {
-  padding: 20px;
-}
-
-.analytics-number {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #374151;
-  margin-bottom: 8px;
-}
-
-.analytics-description {
-  color: #6b7280;
-  font-size: 0.9rem;
-  margin-bottom: 12px;
-}
-
-.analytics-trend {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.trend-indicator {
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-.trend-indicator.positive {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.trend-indicator.negative {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.performance-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.breakdown-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-}
-
-.breakdown-score {
-  font-weight: 600;
-  color: #4f46e5;
-}
-
-.top-performer {
-  text-align: center;
-}
-
-.performer-title {
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 8px;
-  line-height: 1.3;
-}
-
-.performer-stats {
+.alert-action {
+  color: #666666;
   font-size: 1.2rem;
-  font-weight: 700;
-  color: #10b981;
-  margin-bottom: 4px;
 }
 
-.performer-growth {
-  color: #6b7280;
+/* Top Video */
+.top-video-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  background: #f8f9fa;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
+}
+
+.video-thumbnail {
+  width: 120px;
+  height: 90px;
+  flex-shrink: 0;
+}
+
+.video-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.placeholder-thumbnail {
+  width: 100%;
+  height: 100%;
+  background: #e5e5e5;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+.video-info {
+  flex: 1;
+}
+
+.video-title {
+  margin: 0 0 12px 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #000000;
+  line-height: 1.4;
+}
+
+.video-stats {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.stat-item {
   font-size: 0.9rem;
+  color: #666666;
+  font-weight: 500;
 }
 
-.recent-activities {
+/* Activities */
+.activities-list {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -380,121 +385,123 @@ export default {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.activity-item:last-child {
-  border-bottom: none;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
 }
 
 .activity-icon {
   font-size: 1.2rem;
 }
 
-.activity-text {
+.activity-content {
   flex: 1;
-  font-size: 0.9rem;
-  color: #374151;
-  line-height: 1.3;
+}
+
+.activity-text {
+  color: #000000;
+  font-weight: 500;
+  margin-bottom: 4px;
 }
 
 .activity-time {
   font-size: 0.8rem;
-  color: #9ca3af;
+  color: #666666;
 }
 
-.no-data {
-  text-align: center;
-  color: #9ca3af;
-  font-style: italic;
-}
-
-.comparison-section {
-  margin-top: 30px;
-}
-
-.comparison-section h4 {
-  margin: 0 0 20px 0;
-  color: #374151;
-}
-
+/* Comparison Table */
 .comparison-table {
-  background: white;
-  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-.comparison-table table {
-  width: 100%;
-  border-collapse: collapse;
+.comparison-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  background: #f8f9fa;
+  border-bottom: 2px solid #e5e5e5;
 }
 
-.comparison-table th,
-.comparison-table td {
+.comparison-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.comparison-row:last-child {
+  border-bottom: none;
+}
+
+.comparison-cell {
   padding: 12px 16px;
-  text-align: left;
-  border-bottom: 1px solid #e5e7eb;
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
 }
 
-.comparison-table th {
-  background: #f9fafb;
+.comparison-header .comparison-cell {
   font-weight: 600;
-  color: #374151;
-}
-
-.comparison-table td {
-  color: #6b7280;
+  color: #000000;
 }
 
 .channel-name {
   font-weight: 600;
-  color: #374151;
+  color: #000000;
 }
 
-.growth-indicator {
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+.positive {
+  color: #28a745;
   font-weight: 600;
 }
 
-.growth-indicator.positive {
-  background: #dcfce7;
-  color: #16a34a;
-}
-
-.growth-indicator.negative {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.score-badge {
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.75rem;
+.negative {
+  color: #dc3545;
   font-weight: 600;
 }
 
-.score-badge.excellent {
-  background: #dcfce7;
-  color: #16a34a;
+/* Responsive */
+@media (max-width: 768px) {
+  .summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .top-video-card {
+    flex-direction: column;
+  }
+  
+  .video-thumbnail {
+    width: 100%;
+    height: 200px;
+  }
+  
+  .comparison-header,
+  .comparison-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .comparison-cell {
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .comparison-header .comparison-cell {
+    background: #f8f9fa;
+    font-weight: 600;
+  }
 }
 
-.score-badge.good {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.score-badge.average {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.score-badge.poor {
-  background: #fee2e2;
-  color: #dc2626;
+@media (max-width: 480px) {
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .video-stats {
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 </style>

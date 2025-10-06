@@ -1,31 +1,45 @@
 <template>
-  <div class="channel-performance-grid">
-    <div class="performance-card total">
-      <div class="performance-icon">🎯</div>
-      <div class="performance-stats">
-        <div class="performance-number">{{ totalChannels }}</div>
-        <div class="performance-label">Tổng Kênh</div>
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon">📺</div>
+      <div class="stat-info">
+        <div class="stat-value">{{ totalChannels }}</div>
+        <div class="stat-label">Tổng kênh</div>
       </div>
     </div>
-    <div class="performance-card views">
-      <div class="performance-icon">👁️</div>
-      <div class="performance-stats">
-        <div class="performance-number">{{ formatViews(totalViews) }}</div>
-        <div class="performance-label">Tổng Views</div>
+    <div class="stat-card">
+      <div class="stat-icon">🎥</div>
+      <div class="stat-info">
+        <div class="stat-value">{{ totalVideos }}</div>
+        <div class="stat-label">Tổng video</div>
       </div>
     </div>
-    <div class="performance-card growth">
-      <div class="performance-icon">📈</div>
-      <div class="performance-stats">
-        <div class="performance-number">{{ averageGrowthRate }}%</div>
-        <div class="performance-label">Tăng trưởng TB</div>
+    <div class="stat-card">
+      <div class="stat-icon">👀</div>
+      <div class="stat-info">
+        <div class="stat-value">{{ formatViews(totalViews) }}</div>
+        <div class="stat-label">Tổng lượt xem</div>
       </div>
     </div>
-    <div class="performance-card alerts">
-      <div class="performance-icon">⚠️</div>
-      <div class="performance-stats">
-        <div class="performance-number">{{ alertsCount }}</div>
-        <div class="performance-label">Cảnh báo</div>
+    <div class="stat-card">
+      <div class="stat-icon">📱</div>
+      <div class="stat-info">
+        <div class="stat-value">{{ shortsCount }}</div>
+        <div class="stat-label">YouTube Shorts</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">⚠️</div>
+      <div class="stat-info">
+        <div class="stat-value">{{ alertsCount }}</div>
+        <div class="stat-label">Cảnh báo</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">📊</div>
+      <div class="stat-info">
+        <div class="stat-value">{{ averageGrowthRate }}%</div>
+        <div class="stat-label">Tăng trưởng TB</div>
       </div>
     </div>
   </div>
@@ -37,19 +51,27 @@ export default {
   props: {
     totalChannels: {
       type: Number,
-      default: 0
+      required: true
+    },
+    totalVideos: {
+      type: Number,
+      required: true
     },
     totalViews: {
       type: Number,
-      default: 0
+      required: true
     },
-    averageGrowthRate: {
+    shortsCount: {
       type: Number,
-      default: 0
+      required: true
     },
     alertsCount: {
       type: Number,
-      default: 0
+      required: true
+    },
+    averageGrowthRate: {
+      type: Number,
+      required: true
     }
   },
   methods: {
@@ -66,64 +88,47 @@ export default {
 </script>
 
 <style scoped>
-.channel-performance-grid {
+.stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 20px;
-  margin-bottom: 30px;
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-.performance-card {
-  background: white;
-  border-radius: 12px;
+.stat-card {
+  background: #ffffff;
+  border: 2px solid #e5e5e5;
+  border-radius: 8px;
   padding: 20px;
   display: flex;
   align-items: center;
   gap: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
 }
 
-.performance-card:hover {
+.stat-card:hover {
+  border-color: #cccccc;
   transform: translateY(-2px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.performance-card.total {
-  border-left: 4px solid #4f46e5;
-}
-
-.performance-card.views {
-  border-left: 4px solid #10b981;
-}
-
-.performance-card.growth {
-  border-left: 4px solid #f59e0b;
-}
-
-.performance-card.alerts {
-  border-left: 4px solid #ef4444;
-}
-
-.performance-icon {
+.stat-icon {
   font-size: 2rem;
-  opacity: 0.8;
 }
 
-.performance-stats {
+.stat-info {
   flex: 1;
 }
 
-.performance-number {
-  font-size: 1.8rem;
+.stat-value {
+  font-size: 1.5rem;
   font-weight: 700;
-  color: #374151;
+  color: #000000;
   margin-bottom: 4px;
 }
 
-.performance-label {
+.stat-label {
   font-size: 0.9rem;
-  color: #6b7280;
-  font-weight: 500;
+  color: #666666;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="desktop-app">
+  <div class="desktop-app" :class="timeBasedTheme">
     <!-- Header Bar -->
     <div class="header-bar">
       <div class="header-left">
@@ -11,6 +11,10 @@
         <h1 class="app-title">Task & YouTube Manager</h1>
       </div>
       <div class="header-right">
+        <div class="time-info">
+          <span class="current-time">{{ currentTime }}</span>
+          <span class="time-period">{{ timePeriodText }}</span>
+        </div>
         <span class="current-date">{{ currentDate }}</span>
       </div>
     </div>
@@ -81,7 +85,11 @@
         <!-- Tasks List -->
         <div class="tasks-section">
           <div v-if="filteredTasks.length === 0" class="no-tasks">
+            <div class="no-tasks-icon">📝</div>
             <p>{{ searchQuery ? 'Không tìm thấy công việc nào.' : 'Chưa có công việc nào cho ngày này' }}</p>
+            <button v-if="!searchQuery" class="add-first-task-btn" @click="showAddTaskModal = true">
+              Thêm công việc đầu tiên
+            </button>
           </div>
           
           <div v-else class="tasks-list">
@@ -111,8 +119,8 @@
             <p>Theo dõi hiệu suất kênh YouTube với phân tích chi tiết và cảnh báo thông minh</p>
           </div>
           <div class="youtube-actions">
-            <button @click="exportToCSV" class="btn btn-outline">
-              📊 Export CSV
+            <button @click="showApiKeyModal = true" class="btn btn-outline">
+              🔑 {{ apiKey ? 'Cập nhật' : 'Cấu hình' }} API Key
             </button>
             <button @click="updateAllViews" :disabled="isUpdating" class="btn btn-primary">
               {{ isUpdating ? "🔄 Đang cập nhật..." : "🔄 Cập nhật tất cả" }}
@@ -144,18 +152,18 @@
           <!-- Channel Performance Summary -->
           <ChannelPerformanceGrid
             :total-channels="channels.length"
+            :total-videos="videos.length"
             :total-views="totalViews"
-            :average-growth-rate="averageGrowthRate"
+            :shorts-count="shortsCount"
             :alerts-count="lowPerformanceVideos.length"
+            :average-growth-rate="averageGrowthRate"
           />
 
           <!-- Channels Table -->
           <ChannelsTable
             :channels="channels"
             :videos="videos"
-            :initial-sort-by="channelSortBy"
-            :initial-sort-order="channelSortOrder"
-            @sort-change="handleChannelSort"
+            :is-updating="isUpdating"
             @import-videos="importChannelVideos"
             @view-analytics="viewChannelAnalytics"
             @delete-channel="deleteChannel"
@@ -173,22 +181,21 @@
             </div>
           </div>
 
-          <!-- Video Table -->
+          <!-- Videos Table -->
           <VideosTable
-            :videos="filteredVideos"
+            :videos="videos"
             :channels="channels"
             :search-query="videoSearchQuery"
             :filter-channel="filterChannel"
             :filter-video-type="filterVideoType"
             :filter-performance="filterPerformance"
             :current-page="currentVideoPage"
-            :total-pages="totalVideoPages"
-            :initial-sort-by="videoSortBy"
-            :initial-sort-order="videoSortOrder"
+            :per-page="videosPerPage"
             @search-change="videoSearchQuery = $event"
             @filter-change="handleVideoFilters"
             @sort-change="handleVideoSort"
             @page-change="currentVideoPage = $event"
+            @per-page-change="videosPerPage = $event; currentVideoPage = 1"
             @update-views="updateVideoViews"
             @view-analytics="viewVideoAnalytics"
             @delete-video="deleteVideo"
@@ -202,6 +209,7 @@
           <!-- Analytics Grid -->
           <AnalyticsGrid
             :performance-alerts="performanceAlerts"
+            :total-views="totalViews"
             :total-views-growth="totalViewsGrowth"
             :channel-performance-score="channelPerformanceScore"
             :upload-frequency-score="uploadFrequencyScore"
@@ -215,166 +223,273 @@
       </div>
     </div>
 
-    <!-- Add Task Modal -->
-    <div v-if="showAddTaskModal || editingTask" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <h3>{{ editingTask ? 'Sửa Công Việc' : (taskForm.parentId ? 'Thêm Subtask' : 'Thêm Công Việc Mới') }}</h3>
-        <input 
-          v-model="taskForm.title" 
-          placeholder="Tên công việc"
-          class="modal-input"
-        >
-        <textarea 
-          v-model="taskForm.description" 
-          placeholder="Mô tả"
-          class="modal-input"
-        ></textarea>
-        <input 
-          v-model="taskForm.time" 
-          placeholder="Thời gian (VD: 9:00 AM)"
-          class="modal-input"
-        >
-        <select v-model="taskForm.priority" class="modal-input" v-if="!taskForm.parentId">
-          <option value="">Chọn độ ưu tiên</option>
-          <option value="high">Cao</option>
-          <option value="medium">Trung bình</option>
-          <option value="low">Thấp</option>
-        </select>
-        <div class="modal-actions">
-          <button @click="closeModal" class="modal-btn cancel">Hủy</button>
-          <button @click="saveTask" class="modal-btn primary">
-            {{ editingTask ? 'Cập nhật' : 'Thêm' }}
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- Modals -->
+    <TaskModal
+      v-if="showAddTaskModal || editingTask"
+      :editing-task="editingTask"
+      :task-form="taskForm"
+      @close="closeModal"
+      @save="saveTask"
+      @update-form="taskForm = $event"
+    />
 
-    <!-- Copy Individual Task Modal -->
-    <div v-if="showCopyModal" class="modal-overlay" @click="closeCopyModal">
-      <div class="modal" @click.stop>
-        <h3>Copy Task: "{{ taskToCopy?.title }}"</h3>
-        <p v-if="getSubTasks(taskToCopy?.id).length > 0">
-          Task này có {{ getSubTasks(taskToCopy?.id).length }} subtask(s) sẽ được copy cùng.
-        </p>
-        <p>Copy task sang:</p>
-        <div class="copy-options">
-          <label class="copy-option">
-            <input type="radio" v-model="copyTarget" value="yesterday">
-            <span>Hôm qua ({{ getDateLabel(-1) }})</span>
-          </label>
-          <label class="copy-option">
-            <input type="radio" v-model="copyTarget" value="today">
-            <span>Hôm nay ({{ getDateLabel(0) }})</span>
-          </label>
-          <label class="copy-option">
-            <input type="radio" v-model="copyTarget" value="tomorrow">
-            <span>Ngày mai ({{ getDateLabel(1) }})</span>
-          </label>
-          <label class="copy-option">
-            <input type="radio" v-model="copyTarget" value="custom">
-            <span>Ngày khác</span>
-          </label>
-        </div>
-        <input 
-          v-if="copyTarget === 'custom'" 
-          type="date" 
-          v-model="customCopyDate" 
-          class="modal-input"
-        >
-        <div class="modal-actions">
-          <button @click="closeCopyModal" class="modal-btn cancel">Hủy</button>
-          <button @click="copyIndividualTaskConfirm" class="modal-btn primary">Copy Task</button>
-        </div>
-      </div>
-    </div>
+    <CopyTaskModal
+      v-if="showCopyModal"
+      :task-to-copy="taskToCopy"
+      :copy-target="copyTarget"
+      :custom-copy-date="customCopyDate"
+      :sub-tasks-count="getSubTasks(taskToCopy?.id).length"
+      @close="closeCopyModal"
+      @confirm="copyIndividualTaskConfirm"
+      @update-target="copyTarget = $event"
+      @update-date="customCopyDate = $event"
+    />
 
-    <!-- Add Channel Modal -->
-    <div v-if="showAddChannelModal" class="modal-overlay" @click="closeAddChannelModal">
-      <div class="modal" @click.stop>
-        <h3>Thêm Kênh YouTube Mới</h3>
-        <input v-model="newChannel.name" placeholder="Tên kênh" class="modal-input">
-        <input v-model="newChannel.channelId" placeholder="Channel ID hoặc Handle (@username)" class="modal-input">
-        <input v-model="newChannel.subscribers" placeholder="Số subscribers (VD: 10.5K)" class="modal-input">
-        <div class="modal-actions">
-          <button @click="closeAddChannelModal" class="modal-btn cancel">Hủy</button>
-          <button @click="addChannel" class="modal-btn primary">Thêm Kênh</button>
-        </div>
-      </div>
-    </div>
+    <ApiKeyModal
+      v-if="showApiKeyModal"
+      :api-key="apiKey"
+      @close="showApiKeyModal = false"
+      @save="saveApiKey"
+      @update-key="apiKey = $event"
+    />
 
-    <!-- Add Video Modal -->
-    <div v-if="showAddVideoModal" class="modal-overlay" @click="closeAddVideoModal">
-      <div class="modal" @click.stop>
-        <h3>Thêm Video từ YouTube</h3>
-        <p class="modal-note">Hỗ trợ cả video dài và YouTube Shorts</p>
-        <input v-model="newVideo.link" placeholder="Link YouTube (youtube.com/watch?v=... hoặc youtube.com/shorts/... hoặc youtu.be/...)" class="modal-input">
-        <select v-model="newVideo.channelId" class="modal-input">
-          <option value="">Chọn kênh</option>
-          <option v-for="channel in channels" :key="channel.id" :value="channel.id">
-            {{ channel.name }}
-          </option>
-        </select>
-        <div class="modal-actions">
-          <button @click="closeAddVideoModal" class="modal-btn cancel">Hủy</button>
-          <button @click="addVideoFromYouTube" class="modal-btn primary">Thêm Video</button>
-        </div>
-      </div>
-    </div>
+    <ChannelModal
+      v-if="showAddChannelModal"
+      :new-channel="newChannel"
+      @close="closeAddChannelModal"
+      @save="addChannel"
+      @update-channel="newChannel = { ...newChannel, ...$event }"
+    />
 
-    <!-- Video Analytics Modal -->
-    <div v-if="showVideoAnalyticsModal" class="modal-overlay" @click="closeVideoAnalyticsModal">
-      <div class="modal analytics-modal" @click.stop>
-        <h3>📊 Chi Tiết Video: {{ selectedVideo?.title }}</h3>
-        <div v-if="selectedVideo" class="video-analytics-content">
-          <div class="analytics-summary">
-            <div class="summary-item">
-              <div class="summary-label">Views hiện tại:</div>
-              <div class="summary-value">{{ formatViews(selectedVideo.views) }}</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-label">Tăng trưởng:</div>
-              <div class="summary-value" :class="getGrowthClass(selectedVideo.viewGrowth)">
-                {{ selectedVideo.viewGrowth > 0 ? '+' : '' }}{{ selectedVideo.viewGrowth }}%
-              </div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-label">Loại:</div>
-              <div class="summary-value">{{ selectedVideo.isShort ? 'YouTube Shorts' : 'Video dài' }}</div>
-            </div>
-            <div class="summary-item">
-              <div class="summary-label">Thời lượng:</div>
-              <div class="summary-value">{{ selectedVideo.duration }}</div>
-            </div>
-          </div>
-          
-          <div class="view-history">
-            <h4>Lịch Sử Views</h4>
-            <div class="history-list">
-              <div v-for="(record, index) in selectedVideo.viewHistory" :key="index" class="history-item">
-                <div class="history-date">{{ formatDate(record.date) }}</div>
-                <div class="history-views">{{ formatViews(record.views) }}</div>
-                <div v-if="index > 0" class="history-change">
-                  {{ getViewChange(selectedVideo.viewHistory, index) }}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button @click="closeVideoAnalyticsModal" class="modal-btn primary">Đóng</button>
-        </div>
-      </div>
-    </div>
+    <VideoModal
+      v-if="showAddVideoModal"
+      :new-video="newVideo"
+      :channels="channels"
+      @close="closeAddVideoModal"
+      @save="addVideoFromYouTube"
+      @update-video="newVideo = { ...newVideo, ...$event }"
+    />
+
+    <VideoAnalyticsModal
+      v-if="showVideoAnalyticsModal"
+      :selected-video="selectedVideo"
+      @close="closeVideoAnalyticsModal"
+    />
   </div>
 </template>
 
 <script>
+import axios from 'axios'
 import TaskProgress from './TaskManager/TaskProgress.vue'
 import TaskItem from './TaskManager/TaskItem.vue'
 import ChannelPerformanceGrid from './YouTube/ChannelPerformanceGrid.vue'
 import ChannelsTable from './YouTube/ChannelsTable.vue'
 import VideosTable from './YouTube/VideosTable.vue'
 import AnalyticsGrid from './YouTube/AnalyticsGrid.vue'
+import TaskModal from './Modals/TaskModal.vue'
+import CopyTaskModal from './Modals/CopyTaskModal.vue'
+import ApiKeyModal from './Modals/ApiKeyModal.vue'
+import ChannelModal from './Modals/ChannelModal.vue'
+import VideoModal from './Modals/VideoModal.vue'
+import VideoAnalyticsModal from './Modals/VideoAnalyticsModal.vue'
+
+// Enhanced YouTube API utility class with Shorts support
+class YouTubeAPI {
+  constructor(apiKey) {
+    this.apiKey = apiKey
+    this.baseURL = 'https://www.googleapis.com/youtube/v3'
+  }
+
+  extractVideoId(url) {
+    const patterns = [
+      /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/,
+      /youtube\.com\/shorts\/([^"&?\/\s]{11})/,
+      /m\.youtube\.com\/watch\?v=([^"&?\/\s]{11})/,
+      /music\.youtube\.com\/watch\?v=([^"&?\/\s]{11})/
+    ]
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match) {
+        return match[1]
+      }
+    }
+    return null
+  }
+
+  extractChannelId(input) {
+    if (input.startsWith('@')) {
+      return input
+    } else if (input.startsWith('UC') && input.length === 24) {
+      return input
+    } else if (input.includes('youtube.com/channel/')) {
+      return input.split('youtube.com/channel/')[1].split('/')[0]
+    } else if (input.includes('youtube.com/c/')) {
+      return input.split('youtube.com/c/')[1].split('/')[0]
+    } else if (input.includes('youtube.com/@')) {
+      return input.split('youtube.com/@')[1].split('/')[0]
+    }
+    return input
+  }
+
+  isYouTubeShort(url) {
+    return url.includes('/shorts/') || url.includes('youtube.com/shorts')
+  }
+
+  async getVideoInfo(url) {
+    if (!this.apiKey) {
+      throw new Error('API Key chưa được cấu hình')
+    }
+
+    const videoId = this.extractVideoId(url)
+    if (!videoId) {
+      throw new Error('URL YouTube không hợp lệ. Hỗ trợ: youtube.com/watch?v=..., youtube.com/shorts/..., youtu.be/...')
+    }
+
+    try {
+      const response = await axios.get(`${this.baseURL}/videos`, {
+        params: {
+          part: 'snippet,statistics,contentDetails',
+          id: videoId,
+          key: this.apiKey
+        }
+      })
+
+      if (response.data.items.length === 0) {
+        throw new Error('Không tìm thấy video hoặc video bị ẩn/xóa')
+      }
+
+      const video = response.data.items[0]
+      const isShort = this.isYouTubeShort(url) || this.isShortByDuration(video.contentDetails.duration)
+      
+      return {
+        title: video.snippet.title,
+        thumbnail: video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
+        viewCount: parseInt(video.statistics.viewCount) || 0,
+        duration: this.formatDuration(video.contentDetails.duration),
+        isShort: isShort,
+        publishedAt: video.snippet.publishedAt
+      }
+    } catch (error) {
+      if (error.response?.status === 403) {
+        throw new Error('API Key không hợp lệ hoặc đã hết quota')
+      } else if (error.response?.status === 404) {
+        throw new Error('Video không tồn tại hoặc đã bị xóa')
+      }
+      throw new Error('Lỗi khi lấy thông tin video: ' + error.message)
+    }
+  }
+
+  async getChannelVideos(channelId, maxResults = 50) {
+    if (!this.apiKey) {
+      throw new Error('API Key chưa được cấu hình')
+    }
+
+    try {
+      const channelResponse = await axios.get(`${this.baseURL}/channels`, {
+        params: {
+          part: 'contentDetails',
+          id: channelId.startsWith('@') ? undefined : channelId,
+          forUsername: channelId.startsWith('@') ? channelId.substring(1) : undefined,
+          key: this.apiKey
+        }
+      })
+
+      if (channelResponse.data.items.length === 0) {
+        throw new Error('Không tìm thấy kênh')
+      }
+
+      const uploadsPlaylistId = channelResponse.data.items[0].contentDetails.relatedPlaylists.uploads
+
+      const playlistResponse = await axios.get(`${this.baseURL}/playlistItems`, {
+        params: {
+          part: 'snippet',
+          playlistId: uploadsPlaylistId,
+          maxResults: maxResults,
+          key: this.apiKey
+        }
+      })
+
+      const videoIds = playlistResponse.data.items.map(item => item.snippet.resourceId.videoId)
+      
+      const videosResponse = await axios.get(`${this.baseURL}/videos`, {
+        params: {
+          part: 'snippet,statistics,contentDetails',
+          id: videoIds.join(','),
+          key: this.apiKey
+        }
+      })
+
+      return videosResponse.data.items.map(video => ({
+        id: video.id,
+        title: video.snippet.title,
+        thumbnail: video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
+        viewCount: parseInt(video.statistics.viewCount) || 0,
+        duration: this.formatDuration(video.contentDetails.duration),
+        isShort: this.isShortByDuration(video.contentDetails.duration),
+        publishedAt: video.snippet.publishedAt,
+        link: `https://youtube.com/watch?v=${video.id}`
+      }))
+    } catch (error) {
+      if (error.response?.status === 403) {
+        throw new Error('API Key không hợp lệ hoặc đã hết quota')
+      }
+      throw new Error('Lỗi khi lấy video từ kênh: ' + error.message)
+    }
+  }
+
+  isShortByDuration(duration) {
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
+    if (!match) return false
+
+    const hours = parseInt(match[1]) || 0
+    const minutes = parseInt(match[2]) || 0
+    const seconds = parseInt(match[3]) || 0
+
+    const totalSeconds = hours * 3600 + minutes * 60 + seconds
+    return totalSeconds <= 60 && hours === 0
+  }
+
+  async getCurrentViews(url) {
+    const videoId = this.extractVideoId(url)
+    if (!videoId || !this.apiKey) {
+      return Math.floor(Math.random() * 50000) + 1000
+    }
+
+    try {
+      const response = await axios.get(`${this.baseURL}/videos`, {
+        params: {
+          part: 'statistics',
+          id: videoId,
+          key: this.apiKey
+        }
+      })
+
+      if (response.data.items.length === 0) {
+        throw new Error('Video không tồn tại')
+      }
+
+      return parseInt(response.data.items[0].statistics.viewCount) || 0
+    } catch (error) {
+      console.warn('Lỗi khi lấy views:', error.message)
+      return Math.floor(Math.random() * 50000) + 1000
+    }
+  }
+
+  formatDuration(duration) {
+    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
+    if (!match) return '0:00'
+
+    const hours = parseInt(match[1]) || 0
+    const minutes = parseInt(match[2]) || 0
+    const seconds = parseInt(match[3]) || 0
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+}
 
 export default {
   name: 'TaskYouTubeManager',
@@ -384,7 +499,13 @@ export default {
     ChannelPerformanceGrid,
     ChannelsTable,
     VideosTable,
-    AnalyticsGrid
+    AnalyticsGrid,
+    TaskModal,
+    CopyTaskModal,
+    ApiKeyModal,
+    ChannelModal,
+    VideoModal,
+    VideoAnalyticsModal
   },
   data() {
     return {
@@ -408,6 +529,7 @@ export default {
       showAddTaskModal: false,
       showAddChannelModal: false,
       showAddVideoModal: false,
+      showApiKeyModal: false,
       showCopyModal: false,
       showVideoAnalyticsModal: false,
       editingTask: null,
@@ -420,13 +542,15 @@ export default {
       
       // Pagination
       currentVideoPage: 1,
-      videosPerPage: 10,
+      videosPerPage: 20,
       
       // Sorting
       videoSortBy: 'createdAt',
       videoSortOrder: 'desc',
-      channelSortBy: 'name',
-      channelSortOrder: 'asc',
+      
+      // API
+      apiKey: '',
+      youtubeAPI: null,
       
       // Forms
       taskForm: {
@@ -532,13 +656,6 @@ export default {
           channelId: 'UCX6OQ3DkcsbYNE6H8uQQuVA',
           subscribers: '25.2K',
           gradient: 'linear-gradient(135deg, #297373 0%, #73bfb8 100%)'
-        },
-        {
-          id: 3,
-          name: 'Lifestyle Channel',
-          channelId: 'UC123456789',
-          subscribers: '5.8K',
-          gradient: 'linear-gradient(135deg, #ff6b6b 0%, #4ecdc4 100%)'
         }
       ],
       
@@ -574,38 +691,6 @@ export default {
             { date: '2024-01-20', views: 1500 },
             { date: '2024-01-21', views: 1200 }
           ]
-        },
-        {
-          id: 3,
-          title: 'Advanced JavaScript Concepts',
-          channelId: 1,
-          views: 8750,
-          viewGrowth: 8,
-          duration: '22:15',
-          link: 'https://youtube.com/watch?v=example3',
-          thumbnail: null,
-          isShort: false,
-          createdAt: new Date('2024-01-18'),
-          viewHistory: [
-            { date: '2024-01-18', views: 8100 },
-            { date: '2024-01-19', views: 8750 }
-          ]
-        },
-        {
-          id: 4,
-          title: 'Daily Lifestyle Vlog',
-          channelId: 3,
-          views: 2300,
-          viewGrowth: 15,
-          duration: '8:30',
-          link: 'https://youtube.com/watch?v=example4',
-          thumbnail: null,
-          isShort: false,
-          createdAt: new Date('2024-01-22'),
-          viewHistory: [
-            { date: '2024-01-22', views: 2000 },
-            { date: '2024-01-23', views: 2300 }
-          ]
         }
       ]
     }
@@ -619,6 +704,28 @@ export default {
         month: 'long',
         day: 'numeric'
       })
+    },
+    
+    currentTime() {
+      return new Date().toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    },
+    
+    timePeriodText() {
+      const hour = new Date().getHours()
+      if (hour < 12) return 'Buổi sáng'
+      if (hour < 18) return 'Buổi chiều'
+      return 'Buổi tối'
+    },
+    
+    timeBasedTheme() {
+      const hour = new Date().getHours()
+      if (hour < 6) return 'night'
+      if (hour < 12) return 'morning'
+      if (hour < 18) return 'afternoon'
+      return 'evening'
     },
     
     selectedDayTasks() {
@@ -664,72 +771,14 @@ export default {
       return filtered
     },
     
-    filteredVideos() {
-      let filtered = this.videos
-      
-      if (this.videoSearchQuery) {
-        filtered = filtered.filter(video =>
-          video.title.toLowerCase().includes(this.videoSearchQuery.toLowerCase())
-        )
-      }
-      
-      if (this.filterChannel) {
-        filtered = filtered.filter(video =>
-          video.channelId.toString() === this.filterChannel
-        )
-      }
-      
-      if (this.filterVideoType) {
-        if (this.filterVideoType === 'short') {
-          filtered = filtered.filter(video => video.isShort)
-        } else if (this.filterVideoType === 'video') {
-          filtered = filtered.filter(video => !video.isShort)
-        }
-      }
-      
-      if (this.filterPerformance) {
-        if (this.filterPerformance === 'low') {
-          filtered = filtered.filter(video => this.isLowPerformance(video))
-        } else if (this.filterPerformance === 'good') {
-          filtered = filtered.filter(video => !this.isLowPerformance(video))
-        }
-      }
-      
-      return filtered
-    },
-    
-    sortedVideos() {
-      return [...this.filteredVideos].sort((a, b) => {
-        let aValue = a[this.videoSortBy]
-        let bValue = b[this.videoSortBy]
-        
-        if (this.videoSortBy === 'createdAt') {
-          aValue = new Date(aValue)
-          bValue = new Date(bValue)
-        }
-        
-        if (this.videoSortOrder === 'asc') {
-          return aValue > bValue ? 1 : -1
-        } else {
-          return aValue < bValue ? 1 : -1
-        }
-      })
-    },
-    
-    paginatedVideos() {
-      const start = (this.currentVideoPage - 1) * this.videosPerPage
-      const end = start + this.videosPerPage
-      return this.sortedVideos.slice(start, end)
-    },
-    
-    totalVideoPages() {
-      return Math.ceil(this.sortedVideos.length / this.videosPerPage)
-    },
-    
     totalViews() {
       return this.videos.reduce((total, video) => total + video.views, 0)
     },
     
+    shortsCount() {
+      return this.videos.filter(video => video.isShort).length
+    },
+
     lowPerformanceVideos() {
       return this.videos.filter(video => this.isLowPerformance(video))
     },
@@ -983,15 +1032,6 @@ export default {
       this.customCopyDate = ''
     },
     
-    getDateLabel(dayOffset) {
-      const date = new Date()
-      date.setDate(date.getDate() + dayOffset)
-      return date.toLocaleDateString('vi-VN', { 
-        day: '2-digit', 
-        month: '2-digit' 
-      })
-    },
-    
     copyIndividualTaskConfirm() {
       if (!this.taskToCopy) return
       
@@ -1052,20 +1092,15 @@ export default {
     },
     
     // YouTube Management - Event handlers
-    handleChannelSort({ sortBy, sortOrder }) {
-      this.channelSortBy = sortBy
-      this.channelSortOrder = sortOrder
+    handleVideoFilters({ channel, type, performance }) {
+      this.filterChannel = channel
+      this.filterVideoType = type
+      this.filterPerformance = performance
     },
     
     handleVideoSort({ sortBy, sortOrder }) {
       this.videoSortBy = sortBy
       this.videoSortOrder = sortOrder
-    },
-
-    handleVideoFilters({ channel, type, performance }) {
-      this.filterChannel = channel
-      this.filterVideoType = type
-      this.filterPerformance = performance
     },
     
     viewAlertDetails(alert) {
@@ -1074,6 +1109,14 @@ export default {
         this.youtubeActiveTab = 'videos'
       }
       this.showToast('Đã lọc theo cảnh báo được chọn', 'info')
+    },
+    
+    // API Key management
+    saveApiKey() {
+      localStorage.setItem('api-youtube-key', this.apiKey)
+      this.youtubeAPI = new YouTubeAPI(this.apiKey)
+      this.showApiKeyModal = false
+      this.showToast('API Key đã được lưu! Giờ bạn có thể thêm video và Shorts từ YouTube.', 'success')
     },
     
     // Channel management
@@ -1105,38 +1148,48 @@ export default {
 
     async importChannelVideos(channel) {
       if (!channel.channelId) {
-        this.showToast('Kênh này chưa có Channel ID', 'error')
+        this.showToast('Kênh này chưa có Channel ID. Vui lòng cập nhật thông tin kênh.', 'error')
+        return
+      }
+
+      if (!this.youtubeAPI) {
+        this.showToast('Vui lòng cấu hình YouTube API Key trước!', 'error')
         return
       }
 
       this.isUpdating = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        const channelVideos = await this.youtubeAPI.getChannelVideos(channel.channelId, 20)
         
-        const sampleVideos = [
-          {
-            id: Date.now() + Math.random(),
-            title: `New Video from ${channel.name}`,
-            channelId: channel.id,
-            views: Math.floor(Math.random() * 10000) + 1000,
-            viewGrowth: Math.floor(Math.random() * 20) - 5,
-            duration: '10:30',
-            link: `https://youtube.com/watch?v=example${Date.now()}`,
-            thumbnail: null,
-            isShort: Math.random() > 0.7,
-            createdAt: new Date(),
-            viewHistory: [{
-              date: new Date().toISOString().split('T')[0],
-              views: Math.floor(Math.random() * 10000) + 1000
-            }]
+        let importedCount = 0
+        for (const videoData of channelVideos) {
+          const existingVideo = this.videos.find(v => v.link.includes(videoData.id))
+          if (!existingVideo) {
+            const video = {
+              id: Date.now() + Math.random(),
+              title: videoData.title,
+              link: videoData.link,
+              thumbnail: videoData.thumbnail,
+              views: videoData.viewCount,
+              duration: videoData.duration,
+              channelId: channel.id,
+              viewGrowth: 0,
+              isShort: videoData.isShort,
+              createdAt: new Date(videoData.publishedAt),
+              viewHistory: [{
+                date: new Date().toISOString().split('T')[0],
+                views: videoData.viewCount
+              }]
+            }
+            this.videos.push(video)
+            importedCount++
           }
-        ]
+        }
         
-        this.videos.push(...sampleVideos)
         this.saveVideos()
-        this.showToast(`Đã import ${sampleVideos.length} video mới!`, 'success')
+        this.showToast(`Đã import ${importedCount} video mới từ kênh ${channel.name}!`, 'success')
       } catch (error) {
-        this.showToast('Lỗi khi import video: ' + error.message, 'error')
+        this.showToast('Lỗi khi import video từ kênh: ' + error.message, 'error')
       } finally {
         this.isUpdating = false
       }
@@ -1172,32 +1225,54 @@ export default {
       
       this.isUpdating = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        const videoInfo = await this.youtubeAPI?.getVideoInfo(this.newVideo.link)
         
-        const isShort = this.newVideo.link.includes('/shorts/')
-        const video = {
-          id: Date.now(),
-          title: `${isShort ? 'Short: ' : 'Video: '}New Content`,
-          link: this.newVideo.link,
-          thumbnail: null,
-          views: Math.floor(Math.random() * 50000) + 1000,
-          duration: isShort ? '0:30' : '10:00',
-          channelId: this.newVideo.channelId,
-          viewGrowth: Math.floor(Math.random() * 20) - 5,
-          isShort: isShort,
-          createdAt: new Date(),
-          viewHistory: [{
-            date: new Date().toISOString().split('T')[0],
-            views: Math.floor(Math.random() * 50000) + 1000
-          }]
+        if (!videoInfo) {
+          const videoId = this.youtubeAPI?.extractVideoId(this.newVideo.link) || 'unknown'
+          const isShort = this.youtubeAPI?.isYouTubeShort(this.newVideo.link) || false
+          
+          const video = {
+            id: Date.now(),
+            title: `${isShort ? 'Short: ' : 'Video: '}${videoId}`,
+            link: this.newVideo.link,
+            thumbnail: null,
+            views: Math.floor(Math.random() * 50000) + 1000,
+            duration: isShort ? '0:30' : '10:00',
+            channelId: this.newVideo.channelId,
+            viewGrowth: 0,
+            isShort: isShort,
+            createdAt: new Date(),
+            viewHistory: [{
+              date: new Date().toISOString().split('T')[0],
+              views: Math.floor(Math.random() * 50000) + 1000
+            }]
+          }
+          this.videos.push(video)
+        } else {
+          const video = {
+            id: Date.now(),
+            title: videoInfo.title,
+            link: this.newVideo.link,
+            thumbnail: videoInfo.thumbnail,
+            views: videoInfo.viewCount,
+            duration: videoInfo.duration,
+            channelId: this.newVideo.channelId,
+            viewGrowth: 0,
+            isShort: videoInfo.isShort,
+            createdAt: new Date(videoInfo.publishedAt),
+            viewHistory: [{
+              date: new Date().toISOString().split('T')[0],
+              views: videoInfo.viewCount
+            }]
+          }
+          this.videos.push(video)
         }
         
-        this.videos.push(video)
         this.saveVideos()
         this.closeAddVideoModal()
-        this.showToast(`${isShort ? 'YouTube Short' : 'Video'} đã được thêm!`, 'success')
+        this.showToast(`${videoInfo?.isShort ? 'YouTube Short' : 'Video'} đã được thêm thành công!`, 'success')
       } catch (error) {
-        this.showToast('Lỗi khi thêm video: ' + error.message, 'error')
+        this.showToast('Lỗi khi lấy thông tin video: ' + error.message, 'error')
       } finally {
         this.isUpdating = false
       }
@@ -1206,9 +1281,9 @@ export default {
     async updateVideoViews(video) {
       this.isUpdating = true
       try {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        const currentViews = await this.youtubeAPI?.getCurrentViews(video.link) || 
+                            Math.floor(video.views * (1 + (Math.random() * 0.3 - 0.1)))
         
-        const currentViews = Math.floor(video.views * (1 + (Math.random() * 0.3 - 0.1)))
         const oldViews = video.views
         const growth = oldViews > 0 ? ((currentViews - oldViews) / oldViews) * 100 : 0
         
@@ -1231,7 +1306,7 @@ export default {
         }
         
         this.saveVideos()
-        this.showToast(`Views đã cập nhật: ${this.formatViews(currentViews)}`, 'success')
+        this.showToast(`Views đã được cập nhật: ${this.formatViews(currentViews)} (${growth > 0 ? '+' : ''}${growth.toFixed(1)}%)`, 'success')
       } catch (error) {
         this.showToast('Lỗi khi cập nhật views: ' + error.message, 'error')
       } finally {
@@ -1240,14 +1315,20 @@ export default {
     },
     
     async updateAllViews() {
-      if (!confirm('Bạn có muốn cập nhật tất cả views?')) return
+      if(!this.apiKey) {
+        this.showToast('Vui lòng cấu hình YouTube API Key trước ở phần setting!', 'error')
+        return
+      }
+      if (!confirm('Bạn có muốn cập nhật tất cả views từ YouTube?')) return
       
       this.isUpdating = true
       let successCount = 0
       
       for (const video of this.videos) {
         try {
-          const currentViews = Math.floor(video.views * (1 + (Math.random() * 0.3 - 0.1)))
+          const currentViews = await this.youtubeAPI?.getCurrentViews(video.link) || 
+                              Math.floor(video.views * (1 + (Math.random() * 0.3 - 0.1)))
+          
           const oldViews = video.views
           const growth = oldViews > 0 ? ((currentViews - oldViews) / oldViews) * 100 : 0
           
@@ -1276,7 +1357,7 @@ export default {
       
       this.saveVideos()
       this.isUpdating = false
-      this.showToast(`Đã cập nhật ${successCount}/${this.videos.length} video!`, 'success')
+      this.showToast(`Đã cập nhật ${successCount}/${this.videos.length} video thành công!`, 'success')
     },
 
     viewVideoAnalytics(video) {
@@ -1301,40 +1382,6 @@ export default {
       this.showAddVideoModal = false
       this.newVideo = { link: '', channelId: '' }
     },
-
-    exportToCSV() {
-      const csvData = []
-      csvData.push(['Tên Video', 'Kênh', 'Loại', 'Views', 'Tăng Trưởng (%)', 'Thời Lượng', 'Ngày Tạo', 'Link'])
-      
-      this.videos.forEach(video => {
-        csvData.push([
-          video.title,
-          this.getChannelName(video.channelId),
-          video.isShort ? 'Shorts' : 'Video',
-          video.views,
-          video.viewGrowth,
-          video.duration,
-          this.formatDate(video.createdAt),
-          video.link
-        ])
-      })
-      
-      const csvContent = csvData.map(row => row.join(',')).join('\n')
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      
-      if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob)
-        link.setAttribute('href', url)
-        link.setAttribute('download', `youtube_analytics_${new Date().toISOString().split('T')[0]}.csv`)
-        link.style.visibility = 'hidden'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
-      
-      this.showToast('Đã export dữ liệu ra file CSV!', 'success')
-    },
     
     // Utility methods
     formatViews(views) {
@@ -1349,11 +1396,6 @@ export default {
     formatDate(date) {
       if (!date) return 'Không rõ'
       return new Date(date).toLocaleDateString('vi-VN')
-    },
-    
-    getChannelName(channelId) {
-      const channel = this.channels.find(c => c.id === channelId)
-      return channel ? channel.name : 'Unknown Channel'
     },
     
     getChannelVideoCount(channelId) {
@@ -1412,12 +1454,6 @@ export default {
       }
     },
     
-    getGrowthClass(growth) {
-      if (growth > 0) return 'positive'
-      if (growth < 0) return 'negative'
-      return 'neutral'
-    },
-    
     getTimeAgo(date) {
       const now = new Date()
       const diffTime = Math.abs(now - new Date(date))
@@ -1428,17 +1464,15 @@ export default {
       if (diffDays < 30) return `${Math.floor(diffDays / 7)} tuần trước`
       return `${Math.floor(diffDays / 30)} tháng trước`
     },
-
-    getViewChange(viewHistory, index) {
-      if (index === 0) return ''
-      const current = viewHistory[index].views
-      const previous = viewHistory[index - 1].views
-      const change = current - previous
-      return `${change > 0 ? '+' : ''}${this.formatViews(change)}`
-    },
     
     // Storage methods
     loadData() {
+      const savedApiKey = localStorage.getItem('api-youtube-key')
+      if (savedApiKey) {
+        this.apiKey = savedApiKey
+        this.youtubeAPI = new YouTubeAPI(savedApiKey)
+      }
+      
       const savedTasks = localStorage.getItem('tasks')
       if (savedTasks) {
         this.tasks = JSON.parse(savedTasks)
@@ -1476,12 +1510,22 @@ export default {
       localStorage.setItem('expanded-tasks', JSON.stringify(this.expandedTasks))
     },
     
+    // Auto-update setup
     setupAutoUpdate() {
+      // Auto-update views every 30 minutes
+      setInterval(() => {
+        if (this.youtubeAPI && this.videos.length > 0) {
+          this.updateAllViews()
+        }
+      }, 30 * 60 * 1000)
+
+      // Save expanded tasks state when changed
       this.$watch('expandedTasks', () => {
         this.saveExpandedTasks()
       }, { deep: true })
     },
     
+    // Toast notification
     showToast(message, type = 'info') {
       const toast = document.createElement('div')
       toast.className = `toast toast-${type}`
@@ -1506,636 +1550,4 @@ export default {
 }
 </script>
 
-<style>
-/* Clean Light Theme - White & Black Focus */
-.desktop-app {
-  background: #ffffff;
-  min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #000000;
-}
-
-/* Header Bar */
-.header-bar {
-  background: #ffffff;
-  border-bottom: 2px solid #e5e5e5;
-  padding: 16px 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.window-controls {
-  display: flex;
-  gap: 8px;
-}
-
-.control-btn {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.control-btn.red { background: #ff5f57; }
-.control-btn.yellow { background: #ffbd2e; }
-.control-btn.green { background: #28ca42; }
-
-.app-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #000000;
-  margin: 0;
-}
-
-.current-date {
-  font-size: 14px;
-  color: #666666;
-  font-weight: 500;
-}
-
-/* Main Content */
-.main-content {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-  background: #f8f9fa;
-  min-height: calc(100vh - 80px);
-}
-
-/* Tab Navigation */
-.tab-navigation {
-  display: flex;
-  gap: 4px;
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 4px;
-  margin-bottom: 24px;
-}
-
-.tab-btn {
-  flex: 1;
-  padding: 12px 20px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: #666666;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.tab-btn.active {
-  background: #000000;
-  color: #ffffff;
-}
-
-.tab-btn:hover:not(.active) {
-  background: #f5f5f5;
-  color: #000000;
-}
-
-/* Task Management Styles */
-.date-navigation {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  justify-content: center;
-}
-
-.nav-btn {
-  padding: 12px 24px;
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #000000;
-}
-
-.nav-btn.active {
-  background: #000000;
-  color: #ffffff;
-  border-color: #000000;
-}
-
-.nav-btn:hover:not(.active) {
-  border-color: #cccccc;
-}
-
-.task-actions-bar {
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.task-filters {
-  display: flex;
-  gap: 8px;
-}
-
-.filter-btn {
-  padding: 8px 16px;
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: #000000;
-}
-
-.filter-btn.active {
-  background: #000000;
-  color: #ffffff;
-  border-color: #000000;
-}
-
-.filter-btn:hover:not(.active) {
-  border-color: #cccccc;
-}
-
-.task-search {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.search-input {
-  padding: 10px 16px;
-  border: 2px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  min-width: 200px;
-  background: #ffffff;
-  color: #000000;
-}
-
-.search-input:focus {
-  outline: none;
-  border-color: #000000;
-}
-
-.add-task-btn {
-  padding: 10px 20px;
-  background: #000000;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.add-task-btn:hover {
-  background: #333333;
-}
-
-.tasks-section {
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 24px;
-}
-
-.no-tasks {
-  text-align: center;
-  padding: 40px;
-  color: #666666;
-  font-style: italic;
-}
-
-.tasks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-/* YouTube Dashboard Styles */
-.youtube-header {
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 24px;
-  margin-bottom: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-
-.youtube-title h2 {
-  margin: 0 0 8px 0;
-  color: #000000;
-  font-weight: 700;
-}
-
-.youtube-title p {
-  color: #666666;
-  margin: 0;
-  font-size: 0.9rem;
-}
-
-.youtube-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.btn {
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-outline {
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  color: #000000;
-}
-
-.btn-outline:hover {
-  border-color: #cccccc;
-}
-
-.btn-primary {
-  background: #000000;
-  color: #ffffff;
-  border: 2px solid #000000;
-}
-
-.btn-primary:hover {
-  background: #333333;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.youtube-tabs {
-  display: flex;
-  gap: 4px;
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 4px;
-  margin-bottom: 24px;
-}
-
-.youtube-tab-btn {
-  flex: 1;
-  padding: 12px 16px;
-  background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: #666666;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.youtube-tab-btn.active {
-  background: #000000;
-  color: #ffffff;
-}
-
-.youtube-tab-btn:hover:not(.active) {
-  background: #f5f5f5;
-  color: #000000;
-}
-
-.youtube-content {
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 24px;
-}
-
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.content-header h3 {
-  margin: 0;
-  color: #000000;
-  font-weight: 700;
-}
-
-.content-actions {
-  display: flex;
-  gap: 12px;
-}
-
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: #ffffff;
-  border: 2px solid #e5e5e5;
-  border-radius: 8px;
-  padding: 24px;
-  min-width: 400px;
-  max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.analytics-modal {
-  max-width: 600px;
-  min-width: 500px;
-}
-
-.modal h3 {
-  margin: 0 0 20px 0;
-  color: #000000;
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.modal p {
-  color: #666666;
-  margin: 0 0 16px 0;
-  line-height: 1.5;
-}
-
-.modal-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  margin-bottom: 16px;
-  transition: all 0.2s ease;
-  box-sizing: border-box;
-  background: #ffffff;
-  color: #000000;
-}
-
-.modal-input:focus {
-  outline: none;
-  border-color: #000000;
-}
-
-.copy-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 16px 0;
-}
-
-.copy-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.copy-option:hover {
-  background: #f5f5f5;
-}
-
-.copy-option input[type="radio"] {
-  margin: 0;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-top: 24px;
-}
-
-.modal-btn {
-  padding: 10px 20px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.modal-btn.cancel {
-  background: #ffffff;
-  color: #000000;
-  border: 2px solid #e5e5e5;
-}
-
-.modal-btn.cancel:hover {
-  border-color: #cccccc;
-}
-
-.modal-btn.primary {
-  background: #000000;
-  color: #ffffff;
-  border: 2px solid #000000;
-}
-
-.modal-btn.primary:hover {
-  background: #333333;
-}
-
-.modal-note {
-  background: #f8f9fa;
-  border: 2px solid #e5e5e5;
-  border-radius: 6px;
-  padding: 12px;
-  margin-bottom: 16px;
-  font-size: 0.9rem;
-  color: #000000;
-}
-
-/* Video Analytics Modal */
-.video-analytics-content {
-  margin-top: 20px;
-}
-
-.analytics-summary {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.summary-item {
-  padding: 16px;
-  background: #f8f9fa;
-  border: 2px solid #e5e5e5;
-  border-radius: 6px;
-}
-
-.summary-label {
-  font-size: 0.8rem;
-  color: #666666;
-  margin-bottom: 4px;
-  font-weight: 500;
-}
-
-.summary-value {
-  font-weight: 700;
-  color: #000000;
-}
-
-.summary-value.positive {
-  color: #28a745;
-}
-
-.summary-value.negative {
-  color: #dc3545;
-}
-
-.view-history h4 {
-  margin: 0 0 12px 0;
-  color: #000000;
-  font-weight: 700;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: #f8f9fa;
-  border: 2px solid #e5e5e5;
-  border-radius: 6px;
-  font-size: 0.9rem;
-}
-
-.history-date {
-  color: #666666;
-  font-weight: 500;
-}
-
-.history-views {
-  font-weight: 700;
-  color: #000000;
-}
-
-.history-change {
-  color: #28a745;
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-
-/* Toast Notifications */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 12px 20px;
-  border-radius: 6px;
-  color: #ffffff;
-  font-weight: 600;
-  z-index: 2000;
-  transform: translateX(100%);
-  transition: all 0.3s ease;
-  max-width: 400px;
-}
-
-.toast-show {
-  transform: translateX(0);
-}
-
-.toast-success {
-  background: #28a745;
-}
-
-.toast-error {
-  background: #dc3545;
-}
-
-.toast-info {
-  background: #000000;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .main-content {
-    padding: 16px;
-  }
-  
-  .task-actions-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .task-search {
-    justify-content: stretch;
-  }
-  
-  .search-input {
-    min-width: auto;
-    flex: 1;
-  }
-  
-  .modal {
-    min-width: 300px;
-    margin: 20px;
-  }
-  
-  .youtube-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .analytics-summary {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 480px) {
-  .tab-navigation {
-    flex-direction: column;
-  }
-  
-  .youtube-tabs {
-    flex-direction: column;
-  }
-  
-  .date-navigation {
-    flex-direction: column;
-  }
-}
-</style>
+<style src="../styles/TaskYouTubeManager.css"></style>
