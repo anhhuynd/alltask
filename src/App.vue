@@ -139,12 +139,12 @@ export default {
           icon: '📅',
           label: 'Task Manager'
         },
-        //  {
-        //   id: 'voice',
-        //   component: 'VoiceClonerVue',
-        //   icon: '📅',
-        //   label: 'Voice Cloner'
-        // },
+         {
+          id: 'voice',
+          component: 'VoiceClonerVue',
+          icon: '🖼️',
+          label: 'Sắp xếp ảnh'
+        },
         {
           id: 'settings',
           component: 'Settings',

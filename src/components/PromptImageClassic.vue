@@ -20,7 +20,7 @@
     </div>
 
     <!-- API Configuration Section -->
-    <!-- <div class="section-card">
+    <div class="section-card">
       <div class="section-header">
         <div class="section-icon">🔑</div>
         <h2 class="section-title">API Configuration</h2>
@@ -40,7 +40,77 @@
           />
         </div>
       </div>
-    </div> -->
+    </div>
+
+    <!-- Image Style Management Section -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">🎭</div>
+        <h2 class="section-title">Phong Cách Tạo Ảnh</h2>
+        <button @click="showAddStyleModal = true" class="btn btn-primary btn-sm">
+          ➕ Thêm Phong Cách
+        </button>
+      </div>
+      <div class="section-content">
+        <!-- Current Selected Style -->
+        <div class="form-group">
+          <label class="form-label">Phong cách hiện tại:</label>
+          <select v-model="selectedStyleId" class="form-input">
+            <option value="">-- Chọn phong cách --</option>
+            <option v-for="style in imageStyles" :key="style.id" :value="style.id">
+              {{ style.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Style Preview -->
+        <div v-if="selectedStyle" class="style-preview">
+          <div class="style-preview-header">
+            <h4>{{ selectedStyle.name }}</h4>
+            <button @click="editStyle(selectedStyle)" class="btn btn-ghost btn-sm">✏️ Sửa</button>
+          </div>
+          <div class="style-preview-content">
+            <div v-if="selectedStyle.image" class="style-image">
+              <img :src="selectedStyle.image" :alt="selectedStyle.name" />
+            </div>
+            <div class="style-prompt">
+              <strong>Prompt:</strong>
+              <p>{{ selectedStyle.prompt }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Styles Grid -->
+        <div class="styles-grid">
+          <div 
+            v-for="style in imageStyles" 
+            :key="style.id"
+            class="style-card"
+            :class="{ active: selectedStyleId === style.id }"
+            @click="selectedStyleId = style.id"
+          >
+            <div class="style-card-header">
+              <h5>{{ style.name }}</h5>
+              <div class="style-actions">
+                <button @click.stop="editStyle(style)" class="action-btn edit">✏️</button>
+                <button @click.stop="deleteStyle(style.id)" class="action-btn delete">🗑️</button>
+              </div>
+            </div>
+            <div class="style-card-content">
+              <div v-if="style.image" class="style-thumbnail">
+                <img :src="style.image" :alt="style.name" />
+              </div>
+              <div v-else class="style-placeholder">
+                📷 Chưa có ảnh
+              </div>
+              <div class="style-prompt-preview">
+                {{ style.prompt.substring(0, 80) }}{{ style.prompt.length > 80 ? '...' : '' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Settings Section -->
     <div class="section-card">
@@ -255,7 +325,7 @@
     </div>
 
     <!-- History Section -->
-    <!-- <div v-if="history.length > 0" class="section-card">
+    <div v-if="history.length > 0" class="section-card">
       <div class="section-header">
         <div class="section-icon">📚</div>
         <h2 class="section-title">Generation History</h2>
@@ -278,7 +348,7 @@
           </div>
         </div>
       </div>
-    </div> -->
+    </div>
 
     <!-- Success Message -->
     <div v-if="showSuccessMessage" class="success-message">
@@ -289,6 +359,64 @@
           <p>Đã tạo thành công {{ getStatusCount('success') }} prompts và lưu vào file text_final.txt</p>
         </div>
         <button @click="showSuccessMessage = false" class="btn btn-ghost btn-sm">✕</button>
+      </div>
+    </div>
+
+    <!-- Add/Edit Style Modal -->
+    <div v-if="showAddStyleModal || editingStyle" class="modal-overlay" @click="closeModal">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>{{ editingStyle ? 'Sửa Phong Cách' : 'Thêm Phong Cách Mới' }}</h3>
+          <button @click="closeModal" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">Tên phong cách:</label>
+            <input 
+              type="text" 
+              v-model="styleForm.name" 
+              placeholder="VD: Anime Style, Realistic, Watercolor..."
+              class="form-input"
+            />
+          </div>
+          
+          <div class="form-group">
+            <label class="form-label">Prompt mô tả phong cách:</label>
+            <textarea 
+              v-model="styleForm.prompt" 
+              placeholder="VD: anime style, vibrant colors, detailed character design, studio ghibli inspired..."
+              class="form-textarea"
+              rows="4"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Ảnh minh họa (tùy chọn):</label>
+            <div class="image-upload-section">
+              <input 
+                type="file" 
+                @change="handleImageUpload" 
+                accept="image/*" 
+                class="file-input"
+                id="style-image-upload"
+                ref="styleImageInput"
+              />
+              <label for="style-image-upload" class="file-input-label">
+                📷 Chọn Ảnh
+              </label>
+              <div v-if="styleForm.image" class="image-preview">
+                <img :src="styleForm.image" alt="Preview" />
+                <button @click="removeImage" class="remove-image-btn">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button @click="closeModal" class="btn btn-ghost">Hủy</button>
+          <button @click="saveStyle" class="btn btn-primary" :disabled="!styleForm.name || !styleForm.prompt">
+            {{ editingStyle ? 'Cập Nhật' : 'Lưu' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -317,13 +445,26 @@ export default {
         { key: 'tts', label: 'TTS' },
         { key: 'translate', label: 'Dịch thuật' },
         { key: 'prompts', label: 'Prompts' }
-      ]
+      ],
+      // Image Style Management
+      imageStyles: [],
+      selectedStyleId: '',
+      showAddStyleModal: false,
+      editingStyle: null,
+      styleForm: {
+        name: '',
+        prompt: '',
+        image: null
+      }
     }
   },
   computed: {
     overallProgress() {
       if (this.chunks.length === 0) return 0
       return (this.getStatusCount('success') / this.chunks.length) * 100
+    },
+    selectedStyle() {
+      return this.imageStyles.find(style => style.id === this.selectedStyleId) || null
     }
   },
   mounted() {
@@ -332,6 +473,7 @@ export default {
       this.apiKey = savedKey
     }
     this.loadHistory()
+    this.loadImageStyles()
   },
   methods: {
     async chooseFolder() {
@@ -457,6 +599,9 @@ export default {
       this.startTime = new Date()
       let finalText = ""
 
+      // Get selected style prompt
+      const stylePrompt = this.selectedStyle ? this.selectedStyle.prompt : ""
+
       for (let i = 0; i < this.chunks.length; i++) {
         const chunk = this.chunks[i]
         if (chunk.status === "success") continue
@@ -472,6 +617,8 @@ export default {
 Task:
 Analyze the narrative text below and generate **${this.imageNumber} sequential, richly detailed image prompts**, each capturing a visually distinct moment in chronological order.
 
+${stylePrompt ? `Style Requirements: ${stylePrompt}` : ''}
+
 Each prompt must read like a complete, camera-ready description for hyper-realistic image generation, including:
 - Scene composition and focal action
 - Character(s) and emotion or posture
@@ -483,14 +630,11 @@ Each prompt must read like a complete, camera-ready description for hyper-realis
 - Style, depth, and rendering quality (cinematic realism, ultra-high-resolution, soft natural lighting, realistic depth of field, fine texture fidelity)
 - Aspect ratio and output clarity (16:9, ultra-HD, 8K, etc.)
 
-Each output must be **a single paragraph**, fluid and vivid, like:
-"Ancient Greek outdoor banquet scene set beneath gnarled olive trees on a gentle hillside near Athens at dusk, rustic stone tables and bronze goblets awaiting guests, faint haze of grilled lamb and honeyed wine drifting on the warm summer breeze, textured earth with scattered wildflowers, cicadas hidden in dark foliage, distant marble columns silhouetted against a twilight sky, stars beginning to emerge sharp and clear above the Aegean, tranquil and expectant mood, authentic Mediterranean colors and subtle interplay of shadow and soft natural lighting — hyper-realistic nature photography, 8k ultra-sharp details, true-to-life perspective, soft natural lighting, realistic depth of field, authentic colors, fine textures of bark, stone, foliage, and night sky, 16:9 aspect ratio, ultra-high-resolution (4K)."
-
 Format output as:
-[1] 
-[2] 
+[${i*this.imageNumber + 1} prompts total] 
+[${i*this.imageNumber + 2}] 
 …
-[${this.imageNumber}]
+[${i*this.imageNumber + 10}]
 Do not add commentary or explanation. Only return the ${this.imageNumber} prompts.
 
 Narrative to visualize: 
@@ -584,6 +728,101 @@ ${chunk.content}`
           ...item,
           timestamp: new Date(item.timestamp)
         }))
+      }
+    },
+
+    // Image Style Management Methods
+    loadImageStyles() {
+      const saved = localStorage.getItem('image_styles')
+      if (saved) {
+        this.imageStyles = JSON.parse(saved)
+      }
+    },
+
+    saveImageStyles() {
+      localStorage.setItem('image_styles', JSON.stringify(this.imageStyles))
+    },
+
+    handleImageUpload(event) {
+      const file = event.target.files[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        this.styleForm.image = e.target.result
+      }
+      reader.readAsDataURL(file)
+    },
+
+    removeImage() {
+      this.styleForm.image = null
+      if (this.$refs.styleImageInput) {
+        this.$refs.styleImageInput.value = ''
+      }
+    },
+
+    saveStyle() {
+      if (!this.styleForm.name || !this.styleForm.prompt) return
+
+      if (this.editingStyle) {
+        // Update existing style
+        const index = this.imageStyles.findIndex(s => s.id === this.editingStyle.id)
+        if (index !== -1) {
+          this.imageStyles[index] = {
+            ...this.editingStyle,
+            name: this.styleForm.name,
+            prompt: this.styleForm.prompt,
+            image: this.styleForm.image,
+            updatedAt: new Date()
+          }
+        }
+      } else {
+        // Add new style
+        const newStyle = {
+          id: Date.now().toString(),
+          name: this.styleForm.name,
+          prompt: this.styleForm.prompt,
+          image: this.styleForm.image,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+        this.imageStyles.push(newStyle)
+      }
+
+      this.saveImageStyles()
+      this.closeModal()
+    },
+
+    editStyle(style) {
+      this.editingStyle = style
+      this.styleForm = {
+        name: style.name,
+        prompt: style.prompt,
+        image: style.image
+      }
+      this.showAddStyleModal = false
+    },
+
+    deleteStyle(styleId) {
+      if (confirm('Bạn có chắc chắn muốn xóa phong cách này?')) {
+        this.imageStyles = this.imageStyles.filter(s => s.id !== styleId)
+        if (this.selectedStyleId === styleId) {
+          this.selectedStyleId = ''
+        }
+        this.saveImageStyles()
+      }
+    },
+
+    closeModal() {
+      this.showAddStyleModal = false
+      this.editingStyle = null
+      this.styleForm = {
+        name: '',
+        prompt: '',
+        image: null
+      }
+      if (this.$refs.styleImageInput) {
+        this.$refs.styleImageInput.value = ''
       }
     }
   },
@@ -747,6 +986,198 @@ ${chunk.content}`
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-textarea {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Image Style Management */
+.style-preview {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.style-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.style-preview-header h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.style-preview-content {
+  display: flex;
+  gap: 16px;
+}
+
+.style-image {
+  flex-shrink: 0;
+}
+
+.style-image img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.style-prompt {
+  flex: 1;
+}
+
+.style-prompt strong {
+  font-size: 12px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.style-prompt p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* Styles Grid */
+.styles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.style-card {
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.style-card:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.style-card.active {
+  border-color: #10b981;
+  background: #f0fdf4;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.style-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.style-card-header h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.style-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.action-btn {
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+
+.action-btn.edit {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.action-btn.edit:hover {
+  background: #3b82f6;
+  color: white;
+}
+
+.action-btn.delete {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.action-btn.delete:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.style-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.style-thumbnail {
+  width: 100%;
+  height: 120px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.style-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.style-placeholder {
+  width: 100%;
+  height: 120px;
+  border: 2px dashed #d1d5db;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.style-prompt-preview {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.4;
 }
 
 /* Settings Grid */
@@ -1448,6 +1879,132 @@ ${chunk.content}`
   }
 }
 
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #64748b;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Image Upload Section */
+.image-upload-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.image-preview {
+  position: relative;
+  display: inline-block;
+}
+
+.image-preview img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.remove-image-btn {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.remove-image-btn:hover {
+  background: #dc2626;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .dashboard-container {
@@ -1495,6 +2052,19 @@ ${chunk.content}`
     flex-direction: column;
     gap: 12px;
   }
+
+  .styles-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .style-preview-content {
+    flex-direction: column;
+  }
+
+  .modal-content {
+    width: 95%;
+    margin: 20px;
+  }
 }
 
 @media (max-width: 480px) {
@@ -1514,6 +2084,16 @@ ${chunk.content}`
 
   .file-input-wrapper {
     align-items: center;
+  }
+
+  .modal-header {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .modal-footer {
+    flex-direction: column;
   }
 }
 </style>
